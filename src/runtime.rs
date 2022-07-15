@@ -14,14 +14,10 @@ pub struct AliceTable {
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum AliceVal {
-    Bool(Option<bool>),
     String(Option<String>),
-    Byte(Option<i8>),
-    Short(Option<i16>),
-    Int(Option<i32>),
-    Long(Option<i64>),
-    Float32(Option<f32>),
-    Float64(Option<f64>),
+    Bool(Option<bool>),
+    Int(Option<i64>),
+    Float(Option<f64>),
 }
 
 impl AliceStack {
@@ -142,50 +138,30 @@ impl AliceVal {
         }
     }
 
-    pub fn bool() -> Self {
-        Self::Bool(None)
-    }
-
     pub fn string() -> Self {
         Self::String(None)
     }
 
-    pub fn byte() -> Self {
-        Self::Byte(None)
-    }
-
-    pub fn short() -> Self {
-        Self::Short(None)
+    pub fn bool() -> Self {
+        Self::Bool(None)
     }
 
     pub fn int() -> Self {
         Self::Int(None)
     }
 
-    pub fn long() -> Self {
-        Self::Long(None)
-    }
-
-    pub fn float32() -> Self {
-        Self::Float32(None)
-    }
-
-    pub fn float64() -> Self {
-        Self::Float64(None)
+    pub fn float() -> Self {
+        Self::Float(None)
     }
 }
 
 impl std::fmt::Display for AliceVal {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
-            Self::Bool(val) => write!(f, "{}", val.as_ref().expect("cannot print null binding")),
             Self::String(val) => write!(f, "{}", val.as_ref().expect("cannot print null binding")),
-            Self::Byte(val) => write!(f, "{}", val.as_ref().expect("cannot print null binding")),
-            Self::Short(val) => write!(f, "{}", val.as_ref().expect("cannot print null binding")),
+            Self::Bool(val) => write!(f, "{}", val.as_ref().expect("cannot print null binding")),
             Self::Int(val) => write!(f, "{}", val.as_ref().expect("cannot print null binding")),
-            Self::Long(val) => write!(f, "{}", val.as_ref().expect("cannot print null binding")),
-            Self::Float32(val) => write!(f, "{}", val.as_ref().expect("cannot print null binding")),
-            Self::Float64(val) => write!(f, "{}", val.as_ref().expect("cannot print null binding")),
+            Self::Float(val) => write!(f, "{}", val.as_ref().expect("cannot print null binding")),
         }
     }
 }
