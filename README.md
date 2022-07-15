@@ -11,6 +11,13 @@ Alice is an interpreted statically typed, concatenating, stack based language wi
 (* except to distinguish between two multiplications "* *" and pow operation "**" *)
 
 (* an alice program *)
-program = { statement };
-statement = literal | ident | keyword | op
+program = { statement | block };
+block = "{", program, "}";
+statement = phrase | literal | ident | keyword | op |,
+op = "+" | "-" | "*" | "/" | "%";
+eq = "=";
+type = ident (* identical rules *)
+phrase = let | fun |;
+let = "let", ident, [(* literal definition *) eq, literal]
+fun = "fun", ident, [":"], [type, ident], {",", type, ident}, ["->", type], block;
 ```
