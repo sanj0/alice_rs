@@ -36,6 +36,7 @@ impl AliceParser {
                     statements.push(self.gobble_ident_or_kw(iok, &mut iter))
                 }
                 AliceToken::String(s) => statements.push(self.gobble_string_literal(s, &mut iter)?),
+                AliceToken::Number(f, dec) => statements.push(self.gobble_number_literal(*f, *dec, &mut iter)?),
                 _ => todo!(),
             }
         }
@@ -82,6 +83,24 @@ impl AliceParser {
                 Ok(Some(AliceVal::String(_))) => AliceVal::String(Some(s.to_string())),
                 Ok(Some(_)) => todo!(),
                 Ok(None) => AliceVal::String(Some(s.to_string())),
+                Err(e) => return Err(e),
+            },
+        )))
+    }
+
+    fn gobble_number_literal(
+        &self,
+        f: f64,
+        dec: bool,
+        iter: &mut TokenIter,
+    ) -> Result<Box<dyn Statement>, String> {
+        Ok(Box::new(PushStatement(
+            match self.maybe_at_conversion(iter) {
+                Ok(Some(AliceVal::Float(_))) => AliceVal::Float(Some(f)),
+                Ok(Some(AliceVal::Int(_))) => AliceVal::Int(Some(f as i64)),
+                Ok(Some(AliceVal::String(_))) => AliceVal::String(Some(f.to_string())),
+                Ok(None) => if dec { AliceVal::Float(Some(f)) } else { AliceVal::Int(Some(f as i64)) },
+                Ok(Some(val)) => return Err(format!("cannot convert number literal to {}", val.type_name())),
                 Err(e) => return Err(e),
             },
         )))

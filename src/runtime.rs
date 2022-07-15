@@ -1,6 +1,9 @@
 use std::collections::HashMap;
 
 pub const TYPE_STRING: &str = "string";
+pub const TYPE_BOOL: &str = "bool";
+pub const TYPE_INT: &str = "int";
+pub const TYPE_FLOAT: &str = "float";
 
 #[derive(Debug)]
 pub struct AliceStack {
@@ -134,7 +137,19 @@ impl AliceVal {
     pub fn for_type_name(s: &String) -> Result<Self, String> {
         match s.as_str() {
             TYPE_STRING => Ok(Self::string()),
-            _ => Err(format!("unknown type {s}")),
+            TYPE_BOOL => Ok(Self::bool()),
+            TYPE_INT => Ok(Self::int()),
+            TYPE_FLOAT => Ok(Self::float()),
+            _ => Err(format!("unknown type name {s}")),
+        }
+    }
+
+    pub fn type_name(&self) -> &'static str {
+        match self {
+            AliceVal::String(_) => TYPE_STRING,
+            AliceVal::Bool(_) => TYPE_BOOL,
+            AliceVal::Int(_) => TYPE_INT,
+            AliceVal::Float(_) => TYPE_FLOAT,
         }
     }
 

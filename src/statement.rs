@@ -26,7 +26,7 @@ impl Statement for PushStatement {
 impl Statement for PrintlnStatement {
     fn execute(&self, stack: &mut AliceStack, _table: &mut AliceTable) -> Result<(), String> {
         let val = stack.pop()?;
-        println!("{val}");
+        println!("{val:?}");
         Ok(())
     }
 }

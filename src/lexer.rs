@@ -16,7 +16,8 @@ pub struct AliceLexer {
 pub enum AliceToken {
     IdentOrKeyw(String),
     String(String),
-    Number(f64),
+    /// number as an f64 and true if the literal contained a decimal part
+    Number(f64, bool),
     Sep(AliceSeparator),
     Op(AliceOp),
 }
@@ -145,18 +146,24 @@ impl AliceLexer {
         start: char,
         iter: &mut Peekable<Chars>,
     ) -> Result<AliceToken, AliceLexerErr> {
+        let mut had_period = start == '.';
         let mut s = String::new();
         s.push(start);
         let base = if start == '0' {
             match iter.next() {
                 Some(b) if b == 'x' => 16,
                 Some(b) if b == 'b' => 2,
-                Some(b) if is_token_separator(&b) || b.is_whitespace() => {
-                    return Ok(AliceToken::Number(0.0))
-                }
-                Some(b) if b == '_' || b == '.' || !b.is_digit(10) => {
+                Some(b) if b == '_' || b.is_digit(10) => {
                     s.push(b);
                     10
+                }
+                Some(b) if b == '.' => {
+                    s.push(b);
+                    had_period = true;
+                    10
+                }
+                Some(b) if is_token_separator(&b) || b.is_whitespace() => {
+                    return Ok(AliceToken::Number(0.0, false))
                 }
                 Some(b) => {
                     return Err(AliceLexerErr::NumberFormatErr(
@@ -164,12 +171,11 @@ impl AliceLexer {
                         self.loc.clone(),
                     ))
                 }
-                None => return Ok(AliceToken::Number(0.0)),
+                None => return Ok(AliceToken::Number(0.0, false)),
             }
         } else {
             10
         };
-        let mut had_period = start == '.';
         while let Some(c) = iter.peek() {
             match *c {
                 d if d.is_digit(base) => s.push(d),
@@ -186,7 +192,7 @@ impl AliceLexer {
                     }
                 }
                 c if is_token_separator(&c) || c.is_whitespace() => {
-                    return Ok(AliceToken::Number(self.parse_number(s, base as u32)?));
+                    return Ok(AliceToken::Number(self.parse_number(s, base as u32)?, had_period));
                 }
                 _ => {
                     return Err(AliceLexerErr::NumberFormatErr(
@@ -197,7 +203,7 @@ impl AliceLexer {
             }
             iter.next();
         }
-        Ok(AliceToken::Number(self.parse_number(s, base as u32)?))
+        Ok(AliceToken::Number(self.parse_number(s, base as u32)?, had_period))
     }
 
     fn parse_number(&self, s: String, base: u32) -> Result<f64, AliceLexerErr> {
