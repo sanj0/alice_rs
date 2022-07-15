@@ -17,7 +17,20 @@ statement = phrase | literal | ident | keyword | op |,
 op = "+" | "-" | "*" | "/" | "%";
 eq = "=";
 type = ident (* identical rules *)
-phrase = let | fun |;
+phrase = let | fun | sandbox;
 let = "let", ident, [(* literal definition *) eq, literal]
 fun = "fun", ident, [":"], [type, ident], {",", type, ident}, ["->", type], block;
+ (* executes on a copy of the stack. Original stack is restored after *)
+sandbox = "sandbox", block;
+```
+
+## Examples
+```
+// literal definition:
+let hi = "hello, world!"
+
+// function definition:
+fun greet: string s -> string {
+    hi + " This is I!" return
+}
 ```
