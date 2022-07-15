@@ -63,6 +63,7 @@ impl AliceParser {
         match ident.as_str() {
             ST_PRINTLN => Some(Box::new(PrintlnStatement)),
             ST_PRINT => Some(Box::new(PrintStatement)),
+            ST_PRINT_STACK => Some(Box::new(PrintStackStatement)),
             _ => None,
         }
     }
