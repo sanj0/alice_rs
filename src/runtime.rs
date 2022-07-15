@@ -153,6 +153,34 @@ impl AliceVal {
         }
     }
 
+    pub fn unchecked_string(&self) -> String {
+        match self {
+            AliceVal::String(s) => s.clone().as_ref().unwrap().clone(),
+            _ => panic!("self is not of type String"),
+        }
+    }
+
+    pub fn unchecked_bool(&self) -> bool {
+        match self {
+            AliceVal::Bool(b) => *b.as_ref().unwrap(),
+            _ => panic!("self is not of type bool"),
+        }
+    }
+
+    pub fn unchecked_int(&self) -> i64 {
+        match self {
+            AliceVal::Int(i) => *i.as_ref().unwrap(),
+            _ => panic!("self is not of type int"),
+        }
+    }
+
+    pub fn unchecked_float(&self) -> f64 {
+        match self {
+            AliceVal::Float(f) => *f.as_ref().unwrap(),
+            _ => panic!("self is not of type float"),
+        }
+    }
+
     pub fn string() -> Self {
         Self::String(None)
     }

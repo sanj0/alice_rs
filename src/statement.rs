@@ -16,6 +16,12 @@ pub struct PrintStatement;
 /// prints the full stack for debug purposes
 pub struct PrintStackStatement;
 
+/// exits the program with the exit code at the stack head
+pub struct ExitStatement;
+
+/// exits the program with an ok (0) exit code
+pub struct OkExitStatement;
+
 impl Statement for PushStatement {
     fn execute(&self, stack: &mut AliceStack, _table: &mut AliceTable) -> Result<(), String> {
         stack.push(self.0.clone());
@@ -26,7 +32,7 @@ impl Statement for PushStatement {
 impl Statement for PrintlnStatement {
     fn execute(&self, stack: &mut AliceStack, _table: &mut AliceTable) -> Result<(), String> {
         let val = stack.pop()?;
-        println!("{val:?}");
+        println!("{val}");
         Ok(())
     }
 }
@@ -45,5 +51,22 @@ impl Statement for PrintStackStatement {
             println!("{val}");
         }
         Ok(())
+    }
+}
+
+impl Statement for ExitStatement {
+    fn execute(&self, stack: &mut AliceStack, _table: &mut AliceTable) -> Result<(), String> {
+        // todo: redundant with type checker
+        match stack.pop_typed(&AliceVal::int()) {
+            Ok(Some(val)) => std::process::exit(val.unchecked_int() as i32),
+            Ok(None) => panic!("implement a type checker!"),
+            Err(_) => panic!("implement a type checker!"),
+        }
+    }
+}
+
+impl Statement for OkExitStatement {
+    fn execute(&self, stack: &mut AliceStack, _table: &mut AliceTable) -> Result<(), String> {
+        std::process::exit(0);
     }
 }

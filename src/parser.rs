@@ -10,6 +10,8 @@ use std::slice::Iter;
 pub const ST_PRINTLN: &str = "println";
 pub const ST_PRINT: &str = "print";
 pub const ST_PRINT_STACK: &str = "pstack";
+pub const ST_EXIT: &str = "exit";
+pub const ST_OK_EXIT: &str = "okexit";
 
 type TokenIter<'a> = Peekable<Iter<'a, AliceToken>>;
 
@@ -65,6 +67,8 @@ impl AliceParser {
             ST_PRINTLN => Some(Box::new(PrintlnStatement)),
             ST_PRINT => Some(Box::new(PrintStatement)),
             ST_PRINT_STACK => Some(Box::new(PrintStackStatement)),
+            ST_EXIT => Some(Box::new(ExitStatement)),
+            ST_OK_EXIT => Some(Box::new(OkExitStatement)),
             _ => None,
         }
     }
