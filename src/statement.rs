@@ -42,7 +42,7 @@ impl Statement for PrintStatement {
 impl Statement for PrintStackStatement {
     fn execute(&self, stack: &mut AliceStack, _table: &mut AliceTable) -> Result<(), String> {
         for val in &stack.stack {
-            println!("{val:?}");
+            println!("{val}");
         }
         Ok(())
     }
