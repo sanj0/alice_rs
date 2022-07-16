@@ -202,7 +202,10 @@ impl AliceLexer {
                     }
                 }
                 c if is_token_separator(&c) || c.is_whitespace() => {
-                    return Ok(AliceToken::Number(self.parse_number(s, base as u32)?, had_period));
+                    return Ok(AliceToken::Number(
+                        self.parse_number(s, base as u32)?,
+                        had_period,
+                    ));
                 }
                 _ => {
                     return Err(AliceLexerErr::NumberFormatErr(
@@ -213,7 +216,10 @@ impl AliceLexer {
             }
             iter.next();
         }
-        Ok(AliceToken::Number(self.parse_number(s, base as u32)?, had_period))
+        Ok(AliceToken::Number(
+            self.parse_number(s, base as u32)?,
+            had_period,
+        ))
     }
 
     fn parse_number(&self, s: String, base: u32) -> Result<f64, AliceLexerErr> {

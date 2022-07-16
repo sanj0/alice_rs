@@ -41,9 +41,14 @@ impl AliceParser {
         let mut iter = self.tokens.iter().peekable();
         while let Some(token) = iter.next() {
             match token {
-                AliceToken::IdentOrKeyw(iok) => statements.push(self.gobble_ident_or_kw(iok, &mut iter)?),
+                AliceToken::IdentOrKeyw(iok) => {
+                    statements.push(self.gobble_ident_or_kw(iok, &mut iter)?)
+                }
                 AliceToken::String(s) => statements.push(self.gobble_string_literal(s, &mut iter)?),
-                AliceToken::Number(f, dec) => statements.push(self.gobble_number_literal(*f, *dec, &mut iter)?),
+                AliceToken::Number(f, dec) => {
+                    statements.push(self.gobble_number_literal(*f, *dec, &mut iter)?)
+                }
+                AliceToken::Op(op) => statements.push(self.gobble_operator(op, &mut iter)?),
                 _ => todo!(),
             }
         }
@@ -56,7 +61,11 @@ impl AliceParser {
         }
     }
 
-    fn gobble_ident_or_kw(&self, iok: &String, iter: &mut TokenIter) -> Result<Box<dyn Statement>, String> {
+    fn gobble_ident_or_kw(
+        &self,
+        iok: &String,
+        iter: &mut TokenIter,
+    ) -> Result<Box<dyn Statement>, String> {
         let keyword = self.keywords.get(iok);
         if let Some(kw) = keyword {
             self.gobble_kw(kw, iter)
@@ -70,13 +79,11 @@ impl AliceParser {
     }
 
     fn gobble_kw(&self, kw: &Keyword, iter: &mut TokenIter) -> Result<Box<dyn Statement>, String> {
-        Ok(Box::new(
-            match kw {
-                Keyword::True => PushStatement(AliceVal::Bool(Some(true))),
-                Keyword::False => PushStatement(AliceVal::Bool(Some(false))),
-                _ => todo!(),
-            }
-        ))
+        Ok(Box::new(match kw {
+            Keyword::True => PushStatement(AliceVal::Bool(Some(true))),
+            Keyword::False => PushStatement(AliceVal::Bool(Some(false))),
+            _ => todo!(),
+        }))
     }
 
     fn maybe_gobble_statement(&self, ident: &String) -> Option<Box<dyn Statement>> {
@@ -125,11 +132,38 @@ impl AliceParser {
                 Ok(Some(AliceVal::Float(_))) => AliceVal::Float(Some(f)),
                 Ok(Some(AliceVal::Int(_))) => AliceVal::Int(Some(f as i64)),
                 Ok(Some(AliceVal::String(_))) => AliceVal::String(Some(f.to_string())),
-                Ok(None) => if dec { AliceVal::Float(Some(f)) } else { AliceVal::Int(Some(f as i64)) },
-                Ok(Some(val)) => return Err(format!("cannot convert number literal to {}", val.type_name())),
+                Ok(None) => {
+                    if dec {
+                        AliceVal::Float(Some(f))
+                    } else {
+                        AliceVal::Int(Some(f as i64))
+                    }
+                }
+                Ok(Some(val)) => {
+                    return Err(format!(
+                        "cannot convert number literal to {}",
+                        val.type_name()
+                    ))
+                }
                 Err(e) => return Err(e),
             },
         )))
+    }
+
+    fn gobble_operator(
+        &self,
+        op: &AliceOp,
+        iter: &mut TokenIter,
+    ) -> Result<Box<dyn Statement>, String> {
+        Ok(match op {
+            AliceOp::Add => Box::new(AddStatement),
+            AliceOp::Sub => Box::new(SubStatement),
+            AliceOp::Mul => Box::new(MulStatement),
+            AliceOp::Div => Box::new(DivStatement),
+            AliceOp::Pow => Box::new(PowStatement),
+            AliceOp::Mod => Box::new(ModStatement),
+            AliceOp::Eqs => return Err("unexpected equal sign".into()),
+        })
     }
 
     /// returns

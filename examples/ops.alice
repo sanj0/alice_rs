@@ -1,0 +1,7 @@
+# operators are also contextually type checked
+0.14 3 + println
+"string concat " "works with + sign" + println
+100.0 0.5 ** println
+# the following is an example of a type error the parser would catch
+# "hi " 3 +
+

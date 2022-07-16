@@ -1,5 +1,5 @@
-use crate::statement::Statement;
 use crate::runtime::AliceVal;
+use crate::statement::Statement;
 
 pub const STRING: u32 = 1;
 pub const BOOL: u32 = 2;
@@ -20,11 +20,17 @@ pub fn check(statements: &Vec<Box<dyn Statement>>) -> Result<(), TypeCheckError>
     if stack.0.is_empty() {
         Ok(())
     } else {
-        Err(TypeCheckError(format!("{} excess vales on the stack!", stack.0.len())))
+        Err(TypeCheckError(format!(
+            "{} excess vales on the stack!",
+            stack.0.len()
+        )))
     }
 }
 
-pub fn check_interactive(stack: &mut TypeStack, statements: &Vec<Box<dyn Statement>>) -> Result<(), TypeCheckError> {
+pub fn check_interactive(
+    stack: &mut TypeStack,
+    statements: &Vec<Box<dyn Statement>>,
+) -> Result<(), TypeCheckError> {
     for s in statements {
         s.in_pattern().type_check(stack)?;
         s.custom_type_check(stack)?;
@@ -35,12 +41,14 @@ pub fn check_interactive(stack: &mut TypeStack, statements: &Vec<Box<dyn Stateme
 
 impl StackPattern {
     pub fn single(ty: u32) -> Self {
-        Self(vec!(ty))
+        Self(vec![ty])
     }
 
     pub fn any(n: usize) -> Self {
         let mut vec = Vec::with_capacity(n);
-        for i in 0..n { vec.push(ANY) }
+        for i in 0..n {
+            vec.push(ANY)
+        }
         Self(vec)
     }
 
@@ -48,10 +56,14 @@ impl StackPattern {
         for t in &self.0 {
             if let Some(actual) = stack.pop() {
                 if actual & t != actual {
-                    return Err(TypeCheckError(format!("wrong type on stack when this executes"))) // todo descriptive error msg
+                    return Err(TypeCheckError(format!(
+                        "wrong type on stack when this executes"
+                    ))); // todo descriptive error msg
                 }
             } else {
-                return Err(TypeCheckError("too few values on stack when this executes".into()))
+                return Err(TypeCheckError(
+                    "too few values on stack when this executes".into(),
+                ));
             }
         }
         Ok(())
@@ -71,7 +83,9 @@ impl TypeStack {
 
     pub fn required_size(&self, size: usize) -> Result<(), TypeCheckError> {
         if self.0.len() < size {
-            Err(TypeCheckError("too few elements on stack when this executes".into()))
+            Err(TypeCheckError(
+                "too few elements on stack when this executes".into(),
+            ))
         } else {
             Ok(())
         }

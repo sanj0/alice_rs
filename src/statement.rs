@@ -50,6 +50,28 @@ pub struct OverStatement;
 /// a b c rot -> b c a
 pub struct RotStatement;
 
+/// adds the two top most stack elements
+pub struct AddStatement;
+
+/// subtracts the two top most stack elements in "reading" order:
+/// a b - = a - b
+pub struct SubStatement;
+
+/// multiplies the two top most stack elements
+pub struct MulStatement;
+
+/// divides the two top most stack elements in "reading" order:
+/// a b / = a / b
+pub struct DivStatement;
+
+/// raises the second element to the power of the first
+/// a b ** = a^b
+pub struct PowStatement;
+
+/// "modulos" the two top most stack elements in "reading" order:
+/// a b % = a % b
+pub struct ModStatement;
+
 impl Statement for PushStatement {
     fn out_pattern(&self) -> StackPattern {
         StackPattern::single(type_bit(&self.0))
@@ -182,3 +204,243 @@ impl Statement for RotStatement {
     }
 }
 
+// works on number + number
+// and string + string
+impl Statement for AddStatement {
+    fn custom_type_check(&self, stack: &mut TypeStack) -> Result<(), TypeCheckError> {
+        stack.required_size(2)?;
+        let b = stack.pop().unwrap();
+        let a = stack.pop().unwrap();
+        stack.0.push(match (a, b) {
+            (INT, INT) => INT,
+            (FLOAT, FLOAT) => FLOAT,
+            (INT, FLOAT) | (FLOAT, INT) => FLOAT,
+            (STRING, STRING) => STRING,
+            _ => {
+                return Err(TypeCheckError(
+                    "+ only works on numbers and string+string concat".into(),
+                ))
+            }
+        });
+        Ok(())
+    }
+
+    fn execute(&self, stack: &mut AliceStack, _table: &mut AliceTable) -> Result<(), String> {
+        let b = stack.pop()?;
+        let a = stack.pop()?;
+        // all unwrapping is safe due to type checker
+        match (a, b) {
+            (AliceVal::Int(a), AliceVal::Int(b)) => {
+                stack.push(AliceVal::Int(Some(a.unwrap() + b.unwrap())))
+            }
+            (AliceVal::Float(a), AliceVal::Float(b)) => {
+                stack.push(AliceVal::Float(Some(a.unwrap() + b.unwrap())))
+            }
+            (AliceVal::Int(a), AliceVal::Float(b)) => {
+                stack.push(AliceVal::Float(Some(a.unwrap() as f64 + b.unwrap())))
+            }
+            (AliceVal::Float(a), AliceVal::Int(b)) => {
+                stack.push(AliceVal::Float(Some(a.unwrap() + b.unwrap() as f64)))
+            }
+            (AliceVal::String(a), AliceVal::String(b)) => stack.push(AliceVal::String(Some({
+                let mut s = a.unwrap().clone();
+                s.push_str(b.unwrap().as_str());
+                s
+            }))),
+            _ => (),
+        }
+        Ok(())
+    }
+}
+
+// works on number - number
+impl Statement for SubStatement {
+    fn custom_type_check(&self, stack: &mut TypeStack) -> Result<(), TypeCheckError> {
+        stack.required_size(2)?;
+        let b = stack.pop().unwrap();
+        let a = stack.pop().unwrap();
+        stack.0.push(match (a, b) {
+            (INT, INT) => INT,
+            (FLOAT, FLOAT) => FLOAT,
+            (INT, FLOAT) | (FLOAT, INT) => FLOAT,
+            _ => return Err(TypeCheckError("- only works on numbers".into())),
+        });
+        Ok(())
+    }
+
+    fn execute(&self, stack: &mut AliceStack, _table: &mut AliceTable) -> Result<(), String> {
+        let b = stack.pop()?;
+        let a = stack.pop()?;
+        // all unwrapping is safe due to type checker
+        match (a, b) {
+            (AliceVal::Int(a), AliceVal::Int(b)) => {
+                stack.push(AliceVal::Int(Some(a.unwrap() - b.unwrap())))
+            }
+            (AliceVal::Float(a), AliceVal::Float(b)) => {
+                stack.push(AliceVal::Float(Some(a.unwrap() - b.unwrap())))
+            }
+            (AliceVal::Int(a), AliceVal::Float(b)) => {
+                stack.push(AliceVal::Float(Some(a.unwrap() as f64 - b.unwrap())))
+            }
+            (AliceVal::Float(a), AliceVal::Int(b)) => {
+                stack.push(AliceVal::Float(Some(a.unwrap() - b.unwrap() as f64)))
+            }
+            _ => (),
+        }
+        Ok(())
+    }
+}
+
+// works on number - number
+impl Statement for MulStatement {
+    fn custom_type_check(&self, stack: &mut TypeStack) -> Result<(), TypeCheckError> {
+        stack.required_size(2)?;
+        let b = stack.pop().unwrap();
+        let a = stack.pop().unwrap();
+        stack.0.push(match (a, b) {
+            (INT, INT) => INT,
+            (FLOAT, FLOAT) => FLOAT,
+            (INT, FLOAT) | (FLOAT, INT) => FLOAT,
+            _ => return Err(TypeCheckError("* only works on numbers".into())),
+        });
+        Ok(())
+    }
+
+    fn execute(&self, stack: &mut AliceStack, _table: &mut AliceTable) -> Result<(), String> {
+        let b = stack.pop()?;
+        let a = stack.pop()?;
+        // all unwrapping is safe due to type checker
+        match (a, b) {
+            (AliceVal::Int(a), AliceVal::Int(b)) => {
+                stack.push(AliceVal::Int(Some(a.unwrap() * b.unwrap())))
+            }
+            (AliceVal::Float(a), AliceVal::Float(b)) => {
+                stack.push(AliceVal::Float(Some(a.unwrap() * b.unwrap())))
+            }
+            (AliceVal::Int(a), AliceVal::Float(b)) => {
+                stack.push(AliceVal::Float(Some(a.unwrap() as f64 * b.unwrap())))
+            }
+            (AliceVal::Float(a), AliceVal::Int(b)) => {
+                stack.push(AliceVal::Float(Some(a.unwrap() * b.unwrap() as f64)))
+            }
+            _ => (),
+        }
+        Ok(())
+    }
+}
+
+// works on number - number
+impl Statement for DivStatement {
+    fn custom_type_check(&self, stack: &mut TypeStack) -> Result<(), TypeCheckError> {
+        stack.required_size(2)?;
+        let b = stack.pop().unwrap();
+        let a = stack.pop().unwrap();
+        stack.0.push(match (a, b) {
+            (INT, INT) => INT,
+            (FLOAT, FLOAT) => FLOAT,
+            (INT, FLOAT) | (FLOAT, INT) => FLOAT,
+            _ => return Err(TypeCheckError("/ only works on numbers".into())),
+        });
+        Ok(())
+    }
+
+    fn execute(&self, stack: &mut AliceStack, _table: &mut AliceTable) -> Result<(), String> {
+        let b = stack.pop()?;
+        let a = stack.pop()?;
+        // all unwrapping is safe due to type checker
+        match (a, b) {
+            (AliceVal::Int(a), AliceVal::Int(b)) => {
+                stack.push(AliceVal::Int(Some(a.unwrap() / b.unwrap())))
+            }
+            (AliceVal::Float(a), AliceVal::Float(b)) => {
+                stack.push(AliceVal::Float(Some(a.unwrap() / b.unwrap())))
+            }
+            (AliceVal::Int(a), AliceVal::Float(b)) => {
+                stack.push(AliceVal::Float(Some(a.unwrap() as f64 / b.unwrap())))
+            }
+            (AliceVal::Float(a), AliceVal::Int(b)) => {
+                stack.push(AliceVal::Float(Some(a.unwrap() / b.unwrap() as f64)))
+            }
+            _ => (),
+        }
+        Ok(())
+    }
+}
+
+// works on number - number
+impl Statement for PowStatement {
+    fn custom_type_check(&self, stack: &mut TypeStack) -> Result<(), TypeCheckError> {
+        stack.required_size(2)?;
+        let b = stack.pop().unwrap();
+        let a = stack.pop().unwrap();
+        stack.0.push(match (a, b) {
+            (INT, INT) => INT,
+            (FLOAT, FLOAT) => FLOAT,
+            (FLOAT, INT) => FLOAT,
+            (INT, FLOAT) => {
+                return Err(TypeCheckError(
+                    "cannot raise an int to the power of a float".into(),
+                ))
+            }
+            _ => return Err(TypeCheckError("** only works on numbers".into())),
+        });
+        Ok(())
+    }
+
+    fn execute(&self, stack: &mut AliceStack, _table: &mut AliceTable) -> Result<(), String> {
+        let b = stack.pop()?;
+        let a = stack.pop()?;
+        // all unwrapping is safe due to type checker
+        match (a, b) {
+            (AliceVal::Int(a), AliceVal::Int(b)) => stack.push(AliceVal::Int(Some(
+                a.unwrap().pow(b.unwrap().try_into().unwrap()),
+            ))),
+            (AliceVal::Float(a), AliceVal::Float(b)) => {
+                stack.push(AliceVal::Float(Some(a.unwrap().powf(b.unwrap()))))
+            }
+            (AliceVal::Float(a), AliceVal::Int(b)) => stack.push(AliceVal::Float(Some(
+                a.unwrap().powi(b.unwrap().try_into().unwrap()),
+            ))),
+            _ => (),
+        }
+        Ok(())
+    }
+}
+
+// works on number - number
+impl Statement for ModStatement {
+    fn custom_type_check(&self, stack: &mut TypeStack) -> Result<(), TypeCheckError> {
+        stack.required_size(2)?;
+        let b = stack.pop().unwrap();
+        let a = stack.pop().unwrap();
+        stack.0.push(match (a, b) {
+            (INT, INT) => INT,
+            (FLOAT, FLOAT) => FLOAT,
+            (INT, FLOAT) | (FLOAT, INT) => FLOAT,
+            _ => return Err(TypeCheckError("** only works on numbers".into())),
+        });
+        Ok(())
+    }
+
+    fn execute(&self, stack: &mut AliceStack, _table: &mut AliceTable) -> Result<(), String> {
+        let b = stack.pop()?;
+        let a = stack.pop()?;
+        // all unwrapping is safe due to type checker
+        match (a, b) {
+            (AliceVal::Int(a), AliceVal::Int(b)) => {
+                stack.push(AliceVal::Int(Some(a.unwrap() % b.unwrap())))
+            }
+            (AliceVal::Float(a), AliceVal::Float(b)) => {
+                stack.push(AliceVal::Float(Some(a.unwrap() % b.unwrap())))
+            }
+            (AliceVal::Int(a), AliceVal::Float(b)) => {
+                stack.push(AliceVal::Float(Some(a.unwrap() as f64 % b.unwrap())))
+            }
+            (AliceVal::Float(a), AliceVal::Int(b)) => {
+                stack.push(AliceVal::Float(Some(a.unwrap() % b.unwrap() as f64)))
+            }
+            _ => (),
+        }
+        Ok(())
+    }
+}
