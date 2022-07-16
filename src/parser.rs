@@ -18,6 +18,7 @@ pub const ST_SWAP: &str = "swap";
 pub const ST_DUP: &str = "dup";
 pub const ST_OVER: &str = "over";
 pub const ST_ROT: &str = "rot";
+pub const ST_CLEAR: &str = "clear";
 
 type TokenIter<'a> = Peekable<Iter<'a, AliceToken>>;
 
@@ -98,6 +99,7 @@ impl AliceParser {
             ST_DUP => Some(Box::new(DupStatement)),
             ST_OVER => Some(Box::new(OverStatement)),
             ST_ROT => Some(Box::new(RotStatement)),
+            ST_CLEAR => Some(Box::new(ClearStatement)),
             _ => None,
         }
     }

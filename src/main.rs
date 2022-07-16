@@ -10,6 +10,7 @@ mod type_check;
 use crate::lexer::AliceLexer;
 use crate::parser::AliceParser;
 use clap::Parser;
+use std::time::{ Instant, Duration };
 
 fn main() -> Result<(), String> {
     let args = AliceArgs::parse();
@@ -17,21 +18,42 @@ fn main() -> Result<(), String> {
         launch_interactive();
     }
 
+    let bench = args.bench.unwrap_or(false);
+    let mut total = Duration::from_millis(0);
     let file = args.path.unwrap(); // unwrapping here is safe due to previous check
+    let t0 = Instant::now();
     let tokens = AliceLexer::new(load_src(&file)?, file.clone()).tokenize();
+    if bench {
+        let elapsed = t0.elapsed();
+        total += elapsed;
+        println!("[bench] reading, tokenizing:\t{}", display_duration(&elapsed));
+    }
     if let Ok(tokens) = tokens {
         let mut stack = crate::runtime::AliceStack::new(64);
         let mut table = crate::runtime::AliceTable::new(32);
+        let t0 = Instant::now();
         let statements = AliceParser::new(tokens).parse(None);
+        if bench {
+            let elapsed = t0.elapsed();
+            total += elapsed;
+            println!("[bench] parsing, type checking:\t{}", display_duration(&elapsed));
+        }
         if let Err(msg) = statements {
             return Err(format!("Error parsing {file}: {msg}"));
         }
 
         let statements = statements.unwrap();
+        let t0 = Instant::now();
         for s in statements {
             if let Err(e) = s.execute(&mut stack, &mut table) {
                 return Err(format!("Error executing {file}: {e}"));
             }
+        }
+        if bench {
+            let elapsed = t0.elapsed();
+            total += elapsed;
+            println!("[bench] executing program:\t{}", display_duration(&elapsed));
+            println!("[bench] total elapsed:\t\t{}", display_duration(&total));
         }
     } else {
         return Err(format!("Error tokenizing {file} {:?}: ", tokens.err()));
@@ -48,6 +70,9 @@ struct AliceArgs {
     /// Enable emitting of intermediate representation.
     /// Possible value(s): java
     emit: Option<String>,
+    #[clap(short, long)]
+    /// enables benchmark output
+    bench: Option<bool>,
     #[clap(value_parser)]
     /// Path to the alice file.
     /// Empty for interactive mode
@@ -112,4 +137,12 @@ fn load_src(path: &String) -> Result<String, String> {
     } else {
         Err("file {path} doesn't exist!".into())
     }
+}
+
+fn display_duration(dur: &Duration) -> String {
+    let ms = dur.as_micros() as f64 / 1000f64
+    /*let m = ms / 1000 / 60;
+    let s = ms / 1000 % 60;
+    let ms = (ms % 1000) as f64 + ((dur.as_micros() % 1000) as f64 / 1000f64);*/
+    format!("{} ms", ms)
 }

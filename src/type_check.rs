@@ -21,7 +21,7 @@ pub fn check(statements: &Vec<Box<dyn Statement>>) -> Result<(), TypeCheckError>
         Ok(())
     } else {
         Err(TypeCheckError(format!(
-            "{} excess vales on the stack!",
+            "{} excess values on the stack!",
             stack.0.len()
         )))
     }

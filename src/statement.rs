@@ -72,6 +72,9 @@ pub struct PowStatement;
 /// a b % = a % b
 pub struct ModStatement;
 
+/// clears the stack
+pub struct ClearStatement;
+
 impl Statement for PushStatement {
     fn out_pattern(&self) -> StackPattern {
         StackPattern::single(type_bit(&self.0))
@@ -441,6 +444,19 @@ impl Statement for ModStatement {
             }
             _ => (),
         }
+        Ok(())
+    }
+}
+
+impl Statement for ClearStatement {
+    fn custom_type_check(&self, stack: &mut TypeStack) -> Result<(), TypeCheckError> {
+        stack.required_size(0)?;
+        stack.0.clear();
+        Ok(())
+    }
+
+    fn execute(&self, stack: &mut AliceStack, _table: &mut AliceTable) -> Result<(), String> {
+        stack.stack.clear();
         Ok(())
     }
 }
