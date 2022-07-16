@@ -1,0 +1,3 @@
+# due to the static type checker, the following script will fail during parsing
+"this will never print" println
+"success!" exit # because exit requires an int on stack and thus fails when parsing this
