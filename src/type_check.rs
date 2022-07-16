@@ -14,7 +14,7 @@ pub fn check(statements: &Vec<Box<dyn Statement>>) -> Result<(), TypeCheckError>
     let mut stack = TypeStack(Vec::new());
     for s in statements {
         s.in_pattern().type_check(&mut stack)?;
-        s.while_type_check(&mut stack)?;
+        s.custom_type_check(&mut stack)?;
         s.out_pattern().push(&mut stack);
     }
     if stack.0.is_empty() {
@@ -27,7 +27,7 @@ pub fn check(statements: &Vec<Box<dyn Statement>>) -> Result<(), TypeCheckError>
 pub fn check_interactive(stack: &mut TypeStack, statements: &Vec<Box<dyn Statement>>) -> Result<(), TypeCheckError> {
     for s in statements {
         s.in_pattern().type_check(stack)?;
-        s.while_type_check(stack)?;
+        s.custom_type_check(stack)?;
         s.out_pattern().push(stack);
     }
     Ok(())
@@ -48,10 +48,10 @@ impl StackPattern {
         for t in &self.0 {
             if let Some(actual) = stack.pop() {
                 if actual & t != actual {
-                    return Err(TypeCheckError(format!("wrong type on stack"))) // todo descriptive error msg
+                    return Err(TypeCheckError(format!("wrong type on stack when this executes"))) // todo descriptive error msg
                 }
             } else {
-                return Err(TypeCheckError("too few values on stack".into()))
+                return Err(TypeCheckError("too few values on stack when this executes".into()))
             }
         }
         Ok(())
@@ -68,9 +68,17 @@ impl TypeStack {
     pub fn pop(&mut self) -> Option<u32> {
         self.0.pop()
     }
+
+    pub fn required_size(&self, size: usize) -> Result<(), TypeCheckError> {
+        if self.0.len() < size {
+            Err(TypeCheckError("too few elements on stack when this executes".into()))
+        } else {
+            Ok(())
+        }
+    }
 }
 
-pub struct TypeCheckError(String);
+pub struct TypeCheckError(pub String);
 
 impl From<TypeCheckError> for String {
     fn from(err: TypeCheckError) -> String {

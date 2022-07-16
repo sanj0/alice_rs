@@ -13,6 +13,11 @@ pub const ST_PRINT: &str = "print";
 pub const ST_PRINT_STACK: &str = "pstack";
 pub const ST_EXIT: &str = "exit";
 pub const ST_OK_EXIT: &str = "okexit";
+pub const ST_DROP: &str = "drop";
+pub const ST_SWAP: &str = "swap";
+pub const ST_DUP: &str = "dup";
+pub const ST_OVER: &str = "over";
+pub const ST_ROT: &str = "rot";
 
 type TokenIter<'a> = Peekable<Iter<'a, AliceToken>>;
 
@@ -81,6 +86,11 @@ impl AliceParser {
             ST_PRINT_STACK => Some(Box::new(PrintStackStatement)),
             ST_EXIT => Some(Box::new(ExitStatement)),
             ST_OK_EXIT => Some(Box::new(OkExitStatement)),
+            ST_DROP => Some(Box::new(DropStatement)),
+            ST_SWAP => Some(Box::new(SwapStatement)),
+            ST_DUP => Some(Box::new(DupStatement)),
+            ST_OVER => Some(Box::new(OverStatement)),
+            ST_ROT => Some(Box::new(RotStatement)),
             _ => None,
         }
     }

@@ -34,6 +34,18 @@ impl AliceStack {
         self.stack.push(val);
     }
 
+    pub fn get(&self, offset: usize) -> Option<&AliceVal> {
+        self.stack.get(self.stack.len() - 1 - offset)
+    }
+
+    pub fn remove(&mut self, offset: usize) -> AliceVal {
+        self.stack.remove(self.stack.len() - 1 - offset)
+    }
+
+    pub fn size(&self) -> usize {
+        self.stack.len()
+    }
+
     pub fn pop(&mut self) -> Result<AliceVal, String> {
         if let Some(val) = self.stack.pop() {
             Ok(val)

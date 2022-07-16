@@ -1,0 +1,7 @@
+# stack ops are contextually typed checked to work in every context
+" type" 0 " is" "hello" " checked correctly!" ", this"
+rot print print
+swap print
+rot print println
+exit
+
