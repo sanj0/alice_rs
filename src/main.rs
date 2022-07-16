@@ -140,7 +140,7 @@ fn load_src(path: &String) -> Result<String, String> {
 }
 
 fn display_duration(dur: &Duration) -> String {
-    let ms = dur.as_micros() as f64 / 1000f64
+    let ms = dur.as_micros() as f64 / 1000f64;
     /*let m = ms / 1000 / 60;
     let s = ms / 1000 % 60;
     let ms = (ms % 1000) as f64 + ((dur.as_micros() % 1000) as f64 / 1000f64);*/
