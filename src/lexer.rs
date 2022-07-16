@@ -82,6 +82,16 @@ impl AliceLexer {
                 }
                 continue;
             }
+            if c == '#' {
+                while let Some(c) = char_iter.next() {
+                    if c == '\n' {
+                        self.loc.line += 1;
+                        self.loc.column = 1;
+                        break;
+                    }
+                }
+                continue;
+            }
             let token = self.gobble_token(c, &mut char_iter)?;
             tokens.push(token);
         }
