@@ -2,6 +2,7 @@ use crate::keyword::{keywords, Keyword};
 use crate::lexer::{AliceOp, AliceSeparator, AliceToken};
 use crate::runtime::AliceVal;
 use crate::statement::*;
+use crate::type_check::*;
 
 use std::collections::HashMap;
 use std::iter::Peekable;
@@ -28,38 +29,49 @@ impl AliceParser {
         }
     }
 
-    pub fn parse(&self) -> Result<Vec<Box<dyn Statement>>, String> {
+    /// prev = Some(_) assumed interactive mode
+    pub fn parse(&self, prev: Option<&mut TypeStack>) -> Result<Vec<Box<dyn Statement>>, String> {
         let mut statements = Vec::new();
 
         let mut iter = self.tokens.iter().peekable();
         while let Some(token) = iter.next() {
             match token {
-                AliceToken::IdentOrKeyw(iok) => {
-                    statements.push(self.gobble_ident_or_kw(iok, &mut iter))
-                }
+                AliceToken::IdentOrKeyw(iok) => statements.push(self.gobble_ident_or_kw(iok, &mut iter)?),
                 AliceToken::String(s) => statements.push(self.gobble_string_literal(s, &mut iter)?),
                 AliceToken::Number(f, dec) => statements.push(self.gobble_number_literal(*f, *dec, &mut iter)?),
                 _ => todo!(),
             }
         }
-        Ok(statements)
+        if let Some(stack) = prev {
+            check_interactive(stack, &statements)?;
+            Ok(statements)
+        } else {
+            check(&statements)?;
+            Ok(statements)
+        }
     }
 
-    fn gobble_ident_or_kw(&self, iok: &String, iter: &mut TokenIter) -> Box<dyn Statement> {
+    fn gobble_ident_or_kw(&self, iok: &String, iter: &mut TokenIter) -> Result<Box<dyn Statement>, String> {
         let keyword = self.keywords.get(iok);
         if let Some(kw) = keyword {
             self.gobble_kw(kw, iter)
         } else {
             if let Some(statement) = self.maybe_gobble_statement(iok) {
-                statement
+                Ok(statement)
             } else {
-                self.gobble_ident(iok, iter)
+                Ok(self.gobble_ident(iok, iter))
             }
         }
     }
 
-    fn gobble_kw(&self, kw: &Keyword, iter: &mut TokenIter) -> Box<dyn Statement> {
-        todo!()
+    fn gobble_kw(&self, kw: &Keyword, iter: &mut TokenIter) -> Result<Box<dyn Statement>, String> {
+        Ok(Box::new(
+            match kw {
+                Keyword::True => PushStatement(AliceVal::Bool(Some(true))),
+                Keyword::False => PushStatement(AliceVal::Bool(Some(false))),
+                _ => todo!(),
+            }
+        ))
     }
 
     fn maybe_gobble_statement(&self, ident: &String) -> Option<Box<dyn Statement>> {

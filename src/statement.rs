@@ -1,6 +1,17 @@
 use crate::runtime::{AliceStack, AliceTable, AliceVal};
+use crate::type_check::*;
 
 pub trait Statement {
+    fn in_pattern(&self) -> StackPattern {
+        StackPattern(Vec::new())
+    }
+    /// for stack operator type check
+    fn while_type_check(&self, stack: &mut TypeStack) -> Result<(), TypeCheckError> {
+        Ok(())
+    }
+    fn out_pattern(&self) -> StackPattern {
+        StackPattern(Vec::new())
+    }
     fn execute(&self, stack: &mut AliceStack, table: &mut AliceTable) -> Result<(), String>;
 }
 
@@ -23,6 +34,10 @@ pub struct ExitStatement;
 pub struct OkExitStatement;
 
 impl Statement for PushStatement {
+    fn out_pattern(&self) -> StackPattern {
+        StackPattern::single(type_bit(&self.0))
+    }
+
     fn execute(&self, stack: &mut AliceStack, _table: &mut AliceTable) -> Result<(), String> {
         stack.push(self.0.clone());
         Ok(())
@@ -30,6 +45,10 @@ impl Statement for PushStatement {
 }
 
 impl Statement for PrintlnStatement {
+    fn in_pattern(&self) -> StackPattern {
+        StackPattern::any(1)
+    }
+
     fn execute(&self, stack: &mut AliceStack, _table: &mut AliceTable) -> Result<(), String> {
         let val = stack.pop()?;
         println!("{val}");
@@ -38,6 +57,10 @@ impl Statement for PrintlnStatement {
 }
 
 impl Statement for PrintStatement {
+    fn in_pattern(&self) -> StackPattern {
+        StackPattern::any(1)
+    }
+
     fn execute(&self, stack: &mut AliceStack, _table: &mut AliceTable) -> Result<(), String> {
         let val = stack.pop()?;
         print!("{val}");
@@ -55,6 +78,9 @@ impl Statement for PrintStackStatement {
 }
 
 impl Statement for ExitStatement {
+    fn in_pattern(&self) -> StackPattern {
+        StackPattern::single(INT)
+    }
     fn execute(&self, stack: &mut AliceStack, _table: &mut AliceTable) -> Result<(), String> {
         // todo: redundant with type checker
         match stack.pop_typed(&AliceVal::int()) {

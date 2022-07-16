@@ -5,6 +5,7 @@ mod loc;
 mod parser;
 mod runtime;
 mod statement;
+mod type_check;
 
 use crate::lexer::AliceLexer;
 use crate::parser::AliceParser;
@@ -21,12 +22,12 @@ fn main() -> Result<(), String> {
     if let Ok(tokens) = tokens {
         let mut stack = crate::runtime::AliceStack::new(64);
         let mut table = crate::runtime::AliceTable::new(32);
-        let statements = AliceParser::new(tokens).parse();
+        let statements = AliceParser::new(tokens).parse(None);
         if let Err(msg) = statements {
             return Err(format!("Error parsing {file}: {msg}"));
         }
 
-        let statements = statements.ok().unwrap();
+        let statements = statements.unwrap();
         for s in statements {
             if let Err(e) = s.execute(&mut stack, &mut table) {
                 return Err(format!("Error executing {file}: {e}"));
@@ -55,6 +56,7 @@ struct AliceArgs {
 
 fn launch_interactive() {
     let mut stack = crate::runtime::AliceStack::new(64);
+    let mut type_stack = crate::type_check::TypeStack(Vec::new());
     let mut table = crate::runtime::AliceTable::new(64);
 
     use std::io::Write;
@@ -72,9 +74,14 @@ fn launch_interactive() {
         if let Ok(tokens) = tokens {
             // println!("{tokens:?}");
             let parser = AliceParser::new(tokens);
-            let statements = parser.parse();
+            let statements = parser.parse(Some(&mut type_stack));
             if let Err(msg) = statements {
                 eprintln!("{}", format!("error parsing input: {msg}"));
+                // have to redo type stack
+                type_stack.0.clear();
+                for val in &stack.stack {
+                    type_stack.0.push(crate::type_check::type_bit(val));
+                }
             } else {
                 let statements = statements.ok().unwrap();
                 for s in statements {
