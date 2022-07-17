@@ -1,0 +1,8 @@
+# variables can be bound using "let"
+# they are, also, fully checked for existance and type at parse time
+"3 + 0.14 = " let msg: string
+3 let n: int
+0.14 let f: float
+
+msg print
+n f + println
