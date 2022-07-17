@@ -120,5 +120,6 @@ pub fn type_bit(val: &AliceVal) -> u32 {
         AliceVal::Float(_) => FLOAT,
         AliceVal::Object(Some(o)) => o.type_hash,
         AliceVal::Object(None) => OBJECT,
+        AliceVal::Function(_) => panic!("function should not be allowed on stack"),
     }
 }

@@ -1,11 +1,12 @@
 use std::collections::HashMap;
-use crate::object::AliceObj;
+use crate::object::*;
 
 pub const TYPE_STRING: &str = "string";
 pub const TYPE_BOOL: &str = "bool";
 pub const TYPE_INT: &str = "int";
 pub const TYPE_FLOAT: &str = "float";
 pub const TYPE_OBJECT: &str = "object";
+pub const TYPE_FUNCTION: &str = "function";
 
 #[derive(Debug)]
 pub struct AliceStack {
@@ -24,6 +25,7 @@ pub enum AliceVal {
     Int(Option<i64>),
     Float(Option<f64>),
     Object(Option<AliceObj>),
+    Function(Option<AliceFun>),
 }
 
 impl AliceStack {
@@ -167,6 +169,7 @@ impl AliceVal {
             AliceVal::Float(_) => TYPE_FLOAT.into(),
             AliceVal::Object(Some(o)) => o.type_name.clone(),
             AliceVal::Object(None) => TYPE_OBJECT.into(),
+            AliceVal::Function(_) => TYPE_FUNCTION.into(),
         }
     }
 
@@ -223,6 +226,7 @@ impl std::fmt::Display for AliceVal {
             Self::Int(val) => write!(f, "{}", val.as_ref().expect("cannot print null binding")),
             Self::Float(val) => write!(f, "{}", val.as_ref().expect("cannot print null binding")),
             Self::Object(o) => todo!(),
+            Self::Function(o) => write!(f, "function"),
         }
     }
 }

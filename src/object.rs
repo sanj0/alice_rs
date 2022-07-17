@@ -50,6 +50,13 @@ impl Statement for AliceFun {
     }
 }
 
+impl PartialEq for AliceFun {
+    fn eq(&self, other: &Self) -> bool {
+        // functions cannot be placed on the stack, i. e. this is never needed
+        panic!("this should never happen... wtf?")
+    }
+}
+
 impl fmt::Debug for AliceFun {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("AliceFun")
