@@ -1,17 +1,29 @@
 use crate::runtime::AliceVal;
 use crate::statement::Statement;
 
+use std::collections::HashMap;
+
 pub const STRING: u32 = 1;
 pub const BOOL: u32 = 2;
 pub const INT: u32 = 4;
 pub const FLOAT: u32 = 8;
-pub const ANY: u32 = 0b1111;
+// an object ist represented by 
+pub const OBJECT: u32 = 16;
+pub const OBJECT_SIG_MASK: u32 = 0b11111111111111111111111111100000;
+pub const ANY: u32 = 0b11111;
 
-pub struct TypeStack(pub Vec<u32>);
+#[derive(Debug, Clone)]
+pub struct TypeStack(pub Vec<u32>, pub HashMap<String, u32>);
+
+#[derive(Debug, Clone)]
 pub struct StackPattern(pub Vec<u32>);
 
+pub fn is_object(bits: &u32) -> bool {
+    bits > &15
+}
+
 pub fn check(statements: &Vec<Box<dyn Statement>>) -> Result<(), TypeCheckError> {
-    let mut stack = TypeStack(Vec::new());
+    let mut stack = TypeStack(Vec::new(), HashMap::new());
     for s in statements {
         s.in_pattern().type_check(&mut stack)?;
         s.custom_type_check(&mut stack)?;
@@ -106,5 +118,7 @@ pub fn type_bit(val: &AliceVal) -> u32 {
         AliceVal::Bool(_) => BOOL,
         AliceVal::Int(_) => INT,
         AliceVal::Float(_) => FLOAT,
+        AliceVal::Object(Some(o)) => o.type_hash,
+        AliceVal::Object(None) => OBJECT,
     }
 }

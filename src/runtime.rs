@@ -1,9 +1,11 @@
 use std::collections::HashMap;
+use crate::object::AliceObj;
 
 pub const TYPE_STRING: &str = "string";
 pub const TYPE_BOOL: &str = "bool";
 pub const TYPE_INT: &str = "int";
 pub const TYPE_FLOAT: &str = "float";
+pub const TYPE_OBJECT: &str = "object";
 
 #[derive(Debug)]
 pub struct AliceStack {
@@ -15,12 +17,13 @@ pub struct AliceTable {
     pub vars: HashMap<String, AliceVal>,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum AliceVal {
     String(Option<String>),
     Bool(Option<bool>),
     Int(Option<i64>),
     Float(Option<f64>),
+    Object(Option<AliceObj>),
 }
 
 impl AliceStack {
@@ -156,12 +159,14 @@ impl AliceVal {
         }
     }
 
-    pub fn type_name(&self) -> &'static str {
+    pub fn type_name(&self) -> String {
         match self {
-            AliceVal::String(_) => TYPE_STRING,
-            AliceVal::Bool(_) => TYPE_BOOL,
-            AliceVal::Int(_) => TYPE_INT,
-            AliceVal::Float(_) => TYPE_FLOAT,
+            AliceVal::String(_) => TYPE_STRING.into(),
+            AliceVal::Bool(_) => TYPE_BOOL.into(),
+            AliceVal::Int(_) => TYPE_INT.into(),
+            AliceVal::Float(_) => TYPE_FLOAT.into(),
+            AliceVal::Object(Some(o)) => o.type_name.clone(),
+            AliceVal::Object(None) => TYPE_OBJECT.into(),
         }
     }
 
@@ -217,6 +222,7 @@ impl std::fmt::Display for AliceVal {
             Self::Bool(val) => write!(f, "{}", val.as_ref().expect("cannot print null binding")),
             Self::Int(val) => write!(f, "{}", val.as_ref().expect("cannot print null binding")),
             Self::Float(val) => write!(f, "{}", val.as_ref().expect("cannot print null binding")),
+            Self::Object(o) => todo!(),
         }
     }
 }

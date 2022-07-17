@@ -67,8 +67,7 @@ impl AliceParser {
         iok: &String,
         iter: &mut TokenIter,
     ) -> Result<Box<dyn Statement>, String> {
-        let keyword = self.keywords.get(iok);
-        if let Some(kw) = keyword {
+        if let Some(kw) = self.keywords.get(iok) {
             self.gobble_kw(kw, iter)
         } else {
             if let Some(statement) = self.maybe_gobble_statement(iok) {
@@ -83,8 +82,34 @@ impl AliceParser {
         Ok(Box::new(match kw {
             Keyword::True => PushStatement(AliceVal::Bool(Some(true))),
             Keyword::False => PushStatement(AliceVal::Bool(Some(false))),
+            Keyword::Let => return self.gobble_let(iter),
             _ => todo!(),
         }))
+    }
+
+    /// syntax:
+    /// let = "let", ident, ":", type, ["=", literal]
+    /// where liter can also be sbuject to an @-conversion
+    fn gobble_let(&self, iter: &mut TokenIter) -> Result<Box<dyn Statement>, String> {
+        if let (Some(ident), Some(colon), Some(ty)) = (iter.next(), iter.next(), iter.next()) {
+            if let (AliceToken::IdentOrKeyw(ident), AliceToken::Sep(colon), AliceToken::IdentOrKeyw(ty)) = (ident, colon, ty) {
+                if colon != &AliceSeparator::Colon {
+                    return Err("expected colon ':' between let identifier and type".into());
+                }
+                if self.keywords.contains_key(ident) {
+                    return Err(format!("{ident} is a reserved keyword, can't bind a variable to it"))
+                }
+                Ok(Box::new(LetStatement {
+                    ident: ident.into(),
+                    ty: type_bit(&AliceVal::for_type_name(ty)?),
+                    literal: None
+                }))
+            } else {
+                Err("let syntax: 'let' ident ':' type ['=' literal]".into())
+            }
+        } else {
+            Err("let syntax: 'let' ident ':' type ['=' literal]".into())
+        }
     }
 
     fn maybe_gobble_statement(&self, ident: &String) -> Option<Box<dyn Statement>> {
@@ -105,14 +130,15 @@ impl AliceParser {
     }
 
     fn gobble_ident(&self, ident: &String, iter: &mut TokenIter) -> Box<dyn Statement> {
-        todo!()
+        // todo!: at conversion
+        Box::new(PushFromTableStatement(ident.clone()))
     }
 
     fn gobble_string_literal(
         &self,
         s: &String,
         iter: &mut TokenIter,
-    ) -> Result<Box<dyn Statement>, String> {
+    ) -> Result<Box<PushStatement>, String> {
         Ok(Box::new(PushStatement(
             match self.maybe_at_conversion(iter) {
                 Ok(Some(AliceVal::String(_))) => AliceVal::String(Some(s.to_string())),
@@ -128,7 +154,7 @@ impl AliceParser {
         f: f64,
         dec: bool,
         iter: &mut TokenIter,
-    ) -> Result<Box<dyn Statement>, String> {
+    ) -> Result<Box<PushStatement>, String> {
         Ok(Box::new(PushStatement(
             match self.maybe_at_conversion(iter) {
                 Ok(Some(AliceVal::Float(_))) => AliceVal::Float(Some(f)),

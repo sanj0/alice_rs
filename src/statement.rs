@@ -75,6 +75,15 @@ pub struct ModStatement;
 /// clears the stack
 pub struct ClearStatement;
 
+/// bind a variable
+pub struct LetStatement {
+    pub ident: String,
+    pub ty: u32,
+    pub literal: Option<AliceVal>,
+}
+
+pub struct PushFromTableStatement(pub String);
+
 impl Statement for PushStatement {
     fn out_pattern(&self) -> StackPattern {
         StackPattern::single(type_bit(&self.0))
@@ -457,6 +466,44 @@ impl Statement for ClearStatement {
 
     fn execute(&self, stack: &mut AliceStack, _table: &mut AliceTable) -> Result<(), String> {
         stack.stack.clear();
+        Ok(())
+    }
+}
+
+impl Statement for LetStatement {
+    fn in_pattern(&self) -> StackPattern {
+        StackPattern::single(self.ty)
+    }
+
+    fn custom_type_check(&self, stack: &mut TypeStack) -> Result<(), TypeCheckError> {
+        stack.1.insert(self.ident.clone(), self.ty);
+        Ok(())
+    }
+
+    fn execute(&self, stack: &mut AliceStack, table: &mut AliceTable) -> Result<(), String> {
+        table.put(self.ident.clone(),
+            if self.literal.is_some() {
+                self.literal.as_ref().unwrap().clone()
+            } else {
+                stack.pop().unwrap()
+        });
+        Ok(())
+    }
+}
+
+impl Statement for PushFromTableStatement {
+    fn custom_type_check(&self, stack: &mut TypeStack) -> Result<(), TypeCheckError> {
+        if let Some(ty) = stack.1.get(&self.0) {
+            stack.0.push(*ty);
+            Ok(())
+        } else {
+            Err(TypeCheckError(format!("variable binding {} doesn't exist when this executes", self.0)))
+        }
+    }
+
+    fn execute(&self, stack: &mut AliceStack, table: &mut AliceTable) -> Result<(), String> {
+        // unwrapping safe due to type checker
+        stack.push(table.get(&self.0).unwrap().clone());
         Ok(())
     }
 }

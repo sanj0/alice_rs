@@ -24,7 +24,7 @@ pub enum AliceToken {
 
 // when adding a new item, must modify all places comment-marked:
 // on_add_sep
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum AliceSeparator {
     OpenP,  // (
     CloseP, // )

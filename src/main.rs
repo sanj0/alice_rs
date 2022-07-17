@@ -6,11 +6,13 @@ mod parser;
 mod runtime;
 mod statement;
 mod type_check;
+mod object;
 
 use crate::lexer::AliceLexer;
 use crate::parser::AliceParser;
 use clap::Parser;
 use std::time::{ Instant, Duration };
+use std::collections::HashMap;
 
 fn main() -> Result<(), String> {
     let args = AliceArgs::parse();
@@ -81,7 +83,7 @@ struct AliceArgs {
 
 fn launch_interactive() {
     let mut stack = crate::runtime::AliceStack::new(64);
-    let mut type_stack = crate::type_check::TypeStack(Vec::new());
+    let mut type_stack = crate::type_check::TypeStack(Vec::new(), HashMap::new());
     let mut table = crate::runtime::AliceTable::new(64);
 
     use std::io::Write;
