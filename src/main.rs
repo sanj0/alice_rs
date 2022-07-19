@@ -7,6 +7,7 @@ mod runtime;
 mod statement;
 mod type_check;
 mod object;
+mod utils;
 
 use crate::lexer::AliceLexer;
 use crate::parser::AliceParser;
@@ -83,7 +84,7 @@ struct AliceArgs {
 
 fn launch_interactive() {
     let mut stack = crate::runtime::AliceStack::new(64);
-    let mut type_stack = crate::type_check::TypeStack(Vec::new(), HashMap::new());
+    let mut type_stack = crate::type_check::TypeStack::new();
     let mut table = crate::runtime::AliceTable::new(64);
 
     use std::io::Write;
@@ -105,9 +106,9 @@ fn launch_interactive() {
             if let Err(msg) = statements {
                 eprintln!("{}", format!("error parsing input: {msg}"));
                 // have to redo type stack
-                type_stack.0.clear();
+                type_stack.vals.clear();
                 for val in &stack.stack {
-                    type_stack.0.push(crate::type_check::type_bit(val));
+                    type_stack.vals.push(crate::type_check::type_bit(val));
                 }
             } else {
                 let statements = statements.ok().unwrap();

@@ -2,6 +2,7 @@ use crate::runtime::AliceVal;
 use crate::statement::Statement;
 
 use std::collections::HashMap;
+use std::rc::Rc;
 
 pub const STRING: u32 = 1;
 pub const BOOL: u32 = 2;
@@ -13,7 +14,11 @@ pub const OBJECT_SIG_MASK: u32 = 0b11111111111111111111111111100000;
 pub const ANY: u32 = 0b11111;
 
 #[derive(Debug, Clone)]
-pub struct TypeStack(pub Vec<u32>, pub HashMap<String, u32>);
+pub struct TypeStack {
+    pub vals: Vec<u32>,
+    pub vars: HashMap<String, u32>,
+    pub funs: HashMap<String, (StackPattern, u32)>,
+}
 
 #[derive(Debug, Clone)]
 pub struct StackPattern(pub Vec<u32>);
@@ -23,18 +28,18 @@ pub fn is_object(bits: &u32) -> bool {
 }
 
 pub fn check(statements: &Vec<Box<dyn Statement>>) -> Result<(), TypeCheckError> {
-    let mut stack = TypeStack(Vec::new(), HashMap::new());
+    let mut stack = TypeStack::new();
     for s in statements {
         s.in_pattern().type_check(&mut stack)?;
         s.custom_type_check(&mut stack)?;
         s.out_pattern().push(&mut stack);
     }
-    if stack.0.is_empty() {
+    if stack.vals.is_empty() {
         Ok(())
     } else {
         Err(TypeCheckError(format!(
             "{} excess values on the stack!",
-            stack.0.len()
+            stack.vals.len()
         )))
     }
 }
@@ -42,6 +47,18 @@ pub fn check(statements: &Vec<Box<dyn Statement>>) -> Result<(), TypeCheckError>
 pub fn check_interactive(
     stack: &mut TypeStack,
     statements: &Vec<Box<dyn Statement>>,
+) -> Result<(), TypeCheckError> {
+    for s in statements {
+        s.in_pattern().type_check(stack)?;
+        s.custom_type_check(stack)?;
+        s.out_pattern().push(stack);
+    }
+    Ok(())
+}
+
+pub fn check_fun(
+    stack: &mut TypeStack,
+    statements: &Vec<Rc<dyn Statement>>,
 ) -> Result<(), TypeCheckError> {
     for s in statements {
         s.in_pattern().type_check(stack)?;
@@ -83,18 +100,25 @@ impl StackPattern {
 
     pub fn push(&self, stack: &mut TypeStack) {
         for t in &self.0 {
-            stack.0.push(*t);
+            stack.vals.push(*t);
         }
     }
 }
 
 impl TypeStack {
+    pub fn new() -> Self {
+        Self {
+            vals: Vec::new(),
+            vars: HashMap::new(),
+            funs: HashMap::new(),
+        }
+    }
     pub fn pop(&mut self) -> Option<u32> {
-        self.0.pop()
+        self.vals.pop()
     }
 
     pub fn required_size(&self, size: usize) -> Result<(), TypeCheckError> {
-        if self.0.len() < size {
+        if self.vals.len() < size {
             Err(TypeCheckError(
                 "too few elements on stack when this executes".into(),
             ))
@@ -109,6 +133,13 @@ pub struct TypeCheckError(pub String);
 impl From<TypeCheckError> for String {
     fn from(err: TypeCheckError) -> String {
         err.0.clone()
+    }
+}
+
+impl TypeCheckError {
+    pub fn prefix(&self, mut prefix: String) -> Self {
+        prefix.push_str(&self.0);
+        Self(prefix)
     }
 }
 
