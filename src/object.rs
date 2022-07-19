@@ -43,12 +43,14 @@ impl AliceFun {
     pub fn type_check(&self) -> Result<(), TypeCheckError> {
         let mut stack = TypeStack::new();
         self.args.push(&mut stack);
-        check_fun(&mut stack, &self.body).map_err(|e| e.prefix("Function signature promise not correct: ".into()))?;
+        check_fun(&mut stack, &self.body).map_err(|e| e.prefix("Function signature doesn't allow for this: ".into()))?;
         if self.return_type == 0 && stack.vals.len() == 0 {
             return Ok(())
         }
-        if stack.vals.len() != 1 {
-            Err(TypeCheckError("functions can only have one return value!".into()))
+        if stack.vals.len() == 0 {
+            Err(TypeCheckError("function should return something but doesn't".into()))
+        } else if stack.vals.len() > 1 {
+            Err(TypeCheckError("function returns more than one value".into()))
         } else if stack.pop().unwrap() != self.return_type {
             Err(TypeCheckError("function has wrong return type!".into()))
         } else {

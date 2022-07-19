@@ -30,9 +30,11 @@ pub fn is_object(bits: &u32) -> bool {
 pub fn check(statements: &Vec<Box<dyn Statement>>) -> Result<(), TypeCheckError> {
     let mut stack = TypeStack::new();
     for s in statements {
+        //println!("type stack before: {:?}", stack);
         s.in_pattern().type_check(&mut stack)?;
         s.custom_type_check(&mut stack)?;
         s.out_pattern().push(&mut stack);
+        //println!("type stack after: {:?}\n", stack);
     }
     if stack.vals.is_empty() {
         Ok(())

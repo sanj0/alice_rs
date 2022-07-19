@@ -521,10 +521,15 @@ impl Statement for PushFromTableStatement {
 
 impl Statement for ExecuteFunStatement {
     fn custom_type_check(&self, stack: &mut TypeStack) -> Result<(), TypeCheckError> {
-        let fun = stack.funs.get(&self.0);
-        if fun.is_some() {
-            let fun = fun.unwrap();
-            stack.vals.push(fun.1);
+        let sig = stack.funs.remove(&self.0);
+        if sig.is_some() {
+            let sig_clone = sig.as_ref().unwrap().clone();
+            stack.funs.insert(self.0.clone(), sig.unwrap());
+            let sig = sig_clone;
+            sig.0.type_check(stack)?;
+            if sig.1 != 0 {
+                stack.vals.push(sig.1);
+            }
             Ok(())
         } else {
             Err(TypeCheckError(format!("function '{}' doesn't exist when this executes!", self.0)))

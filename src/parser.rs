@@ -137,6 +137,27 @@ impl AliceParser {
                     ident: ident.clone(),
                     fun
                 }))
+            // case 2: no args but return type
+            } else if let (Some(AliceToken::Op(AliceOp::Sub))) = (iter.peek()) {
+                iter.next();
+                if !matches!(iter.next(), Some(AliceToken::Op(AliceOp::Gt))) {
+                    return Err("returning function without args: `'fun' ident -> type block`".into())
+                }
+                if let (Some(AliceToken::IdentOrKeyw(ty)), Some(AliceToken::Sep(AliceSeparator::OpenB)))
+                    = (iter.next(), iter.next()) {
+                        let fun = AliceFun {
+                            args: StackPattern(Vec::new()),
+                            return_type: type_bit(&AliceVal::for_type_name(ty)?),
+                            body: self.gobble_block(iter)?.into_iter().map(|b| box_to_rc(b)).collect()
+                        };
+                        fun.type_check()?;
+                        Ok(Box::new(FunStatement {
+                            ident: ident.clone(),
+                            fun
+                        }))
+                } else {
+                    Err("return type and function body expected".into())
+                }
             } else {
                 todo!()
             }
