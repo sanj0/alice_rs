@@ -118,11 +118,8 @@ impl AliceParser {
     }
 
     // syntax:
-    // fun = "fun", ident, [":", { type }], ["->", type], block
-    /// syntax:
-    /// fun = "fun", ident, block
+    // fun = "fun", ident, [":", { type [","] }], ["->", type], block
     fn gobble_fun(&self, iter: &mut TokenIter) -> Result<Box<dyn Statement>, String> {
-        // todo!: type signature parsing
         if let Some(AliceToken::IdentOrKeyw(ident)) = iter.next() {
             // case 1: no type signature at all
             if let Some(AliceToken::Sep(AliceSeparator::OpenB)) = iter.peek() {
@@ -138,31 +135,75 @@ impl AliceParser {
                     fun
                 }))
             // case 2: no args but return type
-            } else if let (Some(AliceToken::Op(AliceOp::Sub))) = (iter.peek()) {
+            } else if let Some(AliceToken::Op(AliceOp::Sub)) = iter.peek() {
                 iter.next();
-                if !matches!(iter.next(), Some(AliceToken::Op(AliceOp::Gt))) {
-                    return Err("returning function without args: `'fun' ident -> type block`".into())
+                let return_type = self.parse_fun_return_after_dash(iter)?;
+                let fun = AliceFun {
+                    args: StackPattern(Vec::new()),
+                    return_type,
+                    body: self.gobble_block(iter)?.into_iter().map(|b| box_to_rc(b)).collect()
+                };
+                fun.type_check()?;
+                Ok(Box::new(FunStatement {
+                    ident: ident.clone(),
+                    fun
+                }))
+            // case 3: args + maybe return type
+            } else if let Some(AliceToken::Sep(AliceSeparator::Colon)) = iter.next() {
+                let mut args = Vec::new();
+                let mut return_type = 0u32;
+                let mut comma_ok = false;
+                while let Some(ty) = iter.next() {
+                    match ty {
+                        AliceToken::IdentOrKeyw(ty) => {
+                            args.push(type_bit_any_allowed(ty)?);
+                            comma_ok = true;
+                        }
+                        AliceToken::Sep(AliceSeparator::Comma) => {
+                            if comma_ok {
+                                comma_ok = false;
+                            } else {
+                                return Err("Unexpected double comma in function signature".into())
+                            }
+                        }
+                        AliceToken::Op(AliceOp::Sub) => {
+                            return_type = self.parse_fun_return_after_dash(iter)?;
+                            break;
+                        }
+                        AliceToken::Sep(AliceSeparator::OpenB) => break,
+                        _ => return Err("Unexpected token in function signature".into()),
+                    }
                 }
-                if let (Some(AliceToken::IdentOrKeyw(ty)), Some(AliceToken::Sep(AliceSeparator::OpenB)))
-                    = (iter.next(), iter.next()) {
-                        let fun = AliceFun {
-                            args: StackPattern(Vec::new()),
-                            return_type: type_bit(&AliceVal::for_type_name(ty)?),
-                            body: self.gobble_block(iter)?.into_iter().map(|b| box_to_rc(b)).collect()
-                        };
-                        fun.type_check()?;
-                        Ok(Box::new(FunStatement {
-                            ident: ident.clone(),
-                            fun
-                        }))
-                } else {
-                    Err("return type and function body expected".into())
+                if args.is_empty() {
+                    return Err("expected argument type(s) after `'fun' ident ':'`".into());
                 }
+                let fun = AliceFun {
+                    args: StackPattern(args),
+                    return_type,
+                    body: self.gobble_block(iter)?.into_iter().map(|b| box_to_rc(b)).collect()
+                };
+                fun.type_check()?;
+                Ok(Box::new(FunStatement {
+                    ident: ident.clone(),
+                    fun
+                }))
             } else {
-                todo!()
+                Err("after `'fun' ident`, expected one of: `'->'` `':'` `'{'`".into())
             }
         } else {
             Err("fun syntax: 'fun' ident '{' statement* '}'".into())
+        }
+    }
+
+    fn parse_fun_return_after_dash(&self, iter: &mut TokenIter) -> Result<u32, String> {
+        if !matches!(iter.next(), Some(AliceToken::Op(AliceOp::Gt))) {
+            return Err("unexpected token after `'fun' ident ... -`, you probably meant to put `->`".into())
+        }
+        if let (Some(AliceToken::IdentOrKeyw(ty)), Some(AliceToken::Sep(AliceSeparator::OpenB)))
+            = (iter.next(), iter.next()) {
+            Ok(type_bit(&AliceVal::for_type_name(ty)?))
+        } else {
+            Err("return type and function body expected".into())
         }
     }
 

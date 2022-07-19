@@ -156,3 +156,11 @@ pub fn type_bit(val: &AliceVal) -> u32 {
         AliceVal::Function(_) => panic!("function should not be allowed on stack"),
     }
 }
+
+pub fn type_bit_any_allowed(name: &String) -> Result<u32, String> {
+    if name == "any" {
+        Ok(ANY)
+    } else {
+        Ok(type_bit(&AliceVal::for_type_name(name)?))
+    }
+}
