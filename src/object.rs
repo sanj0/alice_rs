@@ -26,6 +26,7 @@ impl PartialEq for AliceObj {
 pub struct AliceFun {
     pub args: StackPattern,
     /// possible values defined in type_check.rs
+    /// 0 means no return type
     pub return_type: u32,
     pub body: Vec<Rc<dyn Statement>>,
 }
@@ -36,6 +37,24 @@ impl AliceFun {
             args,
             return_type,
             body
+        }
+    }
+
+    pub fn type_check(&self) -> Result<(), TypeCheckError> {
+        let mut stack = TypeStack::new();
+        self.args.push(&mut stack);
+        check_fun(&mut stack, &self.body).map_err(|e| e.prefix("Function signature doesn't allow for this: ".into()))?;
+        if self.return_type == 0 && stack.vals.len() == 0 {
+            return Ok(())
+        }
+        if stack.vals.len() == 0 {
+            Err(TypeCheckError("function should return something but doesn't".into()))
+        } else if stack.vals.len() > 1 {
+            Err(TypeCheckError("function returns more than one value".into()))
+        } else if stack.pop().unwrap() != self.return_type {
+            Err(TypeCheckError("function has wrong return type!".into()))
+        } else {
+            Ok(())
         }
     }
 }
@@ -62,6 +81,7 @@ impl fmt::Debug for AliceFun {
         f.debug_struct("AliceFun")
             .field("args", &self.args)
             .field("return_type", &self.return_type)
+            .field("statements", &self.body.len())
             .finish()
     }
 }

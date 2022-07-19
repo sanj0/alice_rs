@@ -1,0 +1,36 @@
+fun ping {
+    "ping" println
+}
+
+fun greet -> string {
+    "hello there"
+}
+
+fun pi -> float {
+    0.14 3 + dup swap drop
+}
+
+fun pi_approx -> int {
+    3 0.0@int +
+}
+
+fun drop_three: any, any, any -> string {
+    drop drop drop
+    "dropped three values"
+}
+
+fun gen_greeting: string -> string {
+    "hello, " swap +
+}
+
+fun get_true -> bool {
+    true
+}
+
+"world" gen_greeting() println
+ping()
+greet() println
+"pi: " print pi() println
+"pi approx: " print pi_approx() println
+1 2 3 drop_three() println
+get_true() println

@@ -3,10 +3,13 @@ use crate::lexer::{AliceOp, AliceSeparator, AliceToken};
 use crate::runtime::AliceVal;
 use crate::statement::*;
 use crate::type_check::*;
+use crate::object::*;
+use crate::utils::*;
 
 use std::collections::HashMap;
 use std::iter::Peekable;
 use std::slice::Iter;
+use std::rc::Rc;
 
 pub const ST_PRINTLN: &str = "println";
 pub const ST_PRINT: &str = "print";
@@ -41,17 +44,7 @@ impl AliceParser {
 
         let mut iter = self.tokens.iter().peekable();
         while let Some(token) = iter.next() {
-            match token {
-                AliceToken::IdentOrKeyw(iok) => {
-                    statements.push(self.gobble_ident_or_kw(iok, &mut iter)?)
-                }
-                AliceToken::String(s) => statements.push(self.gobble_string_literal(s, &mut iter)?),
-                AliceToken::Number(f, dec) => {
-                    statements.push(self.gobble_number_literal(*f, *dec, &mut iter)?)
-                }
-                AliceToken::Op(op) => statements.push(self.gobble_operator(op, &mut iter)?),
-                _ => todo!(),
-            }
+            statements.push(self.gobble_token(token, &mut iter)?);
         }
         if let Some(stack) = prev {
             check_interactive(stack, &statements)?;
@@ -59,6 +52,21 @@ impl AliceParser {
         } else {
             check(&statements)?;
             Ok(statements)
+        }
+    }
+
+    fn gobble_token(&self, token: &AliceToken, iter: &mut TokenIter)
+        -> Result<Box<dyn Statement>, String> {
+        match token {
+            AliceToken::IdentOrKeyw(iok) => {
+                self.gobble_ident_or_kw(iok, iter)
+            }
+            AliceToken::String(s) => self.gobble_string_literal(s, iter),
+            AliceToken::Number(f, dec) => {
+                self.gobble_number_literal(*f, *dec, iter)
+            }
+            AliceToken::Op(op) => self.gobble_operator(op, iter),
+            _ => todo!(),
         }
     }
 
@@ -73,7 +81,7 @@ impl AliceParser {
             if let Some(statement) = self.maybe_gobble_statement(iok) {
                 Ok(statement)
             } else {
-                Ok(self.gobble_ident(iok, iter))
+                self.gobble_ident(iok, iter)
             }
         }
     }
@@ -83,19 +91,19 @@ impl AliceParser {
             Keyword::True => PushStatement(AliceVal::Bool(Some(true))),
             Keyword::False => PushStatement(AliceVal::Bool(Some(false))),
             Keyword::Let => return self.gobble_let(iter),
+            Keyword::Fun => return self.gobble_fun(iter),
             _ => todo!(),
         }))
     }
 
     /// syntax:
     /// let = "let", ident, ":", type, ["=", literal]
-    /// where liter can also be sbuject to an @-conversion
+    /// where literal can also be sbuject to an @-conversion
     fn gobble_let(&self, iter: &mut TokenIter) -> Result<Box<dyn Statement>, String> {
-        if let (Some(ident), Some(colon), Some(ty)) = (iter.next(), iter.next(), iter.next()) {
-            if let (AliceToken::IdentOrKeyw(ident), AliceToken::Sep(colon), AliceToken::IdentOrKeyw(ty)) = (ident, colon, ty) {
-                if colon != &AliceSeparator::Colon {
-                    return Err("expected colon ':' between let identifier and type".into());
-                }
+        if let (Some(AliceToken::IdentOrKeyw(ident)),
+            Some(AliceToken::Sep(AliceSeparator::Colon)),
+            Some(AliceToken::IdentOrKeyw(ty)))
+            = (iter.next(), iter.next(), iter.next()) {
                 if self.keywords.contains_key(ident) {
                     return Err(format!("{ident} is a reserved keyword, can't bind a variable to it"))
                 }
@@ -104,12 +112,111 @@ impl AliceParser {
                     ty: type_bit(&AliceVal::for_type_name(ty)?),
                     literal: None
                 }))
-            } else {
-                Err("let syntax: 'let' ident ':' type ['=' literal]".into())
-            }
         } else {
             Err("let syntax: 'let' ident ':' type ['=' literal]".into())
         }
+    }
+
+    // syntax:
+    // fun = "fun", ident, [":", { type [","] }], ["->", type], block
+    fn gobble_fun(&self, iter: &mut TokenIter) -> Result<Box<dyn Statement>, String> {
+        if let Some(AliceToken::IdentOrKeyw(ident)) = iter.next() {
+            // case 1: no type signature at all
+            if let Some(AliceToken::Sep(AliceSeparator::OpenB)) = iter.peek() {
+                iter.next();
+                let fun = AliceFun {
+                    args: StackPattern(Vec::new()),
+                    return_type: 0,
+                    body: self.gobble_block(iter)?.into_iter().map(|b| box_to_rc(b)).collect()
+                };
+                fun.type_check()?;
+                Ok(Box::new(FunStatement {
+                    ident: ident.clone(),
+                    fun
+                }))
+            // case 2: no args but return type
+            } else if let Some(AliceToken::Op(AliceOp::Sub)) = iter.peek() {
+                iter.next();
+                let return_type = self.parse_fun_return_after_dash(iter)?;
+                let fun = AliceFun {
+                    args: StackPattern(Vec::new()),
+                    return_type,
+                    body: self.gobble_block(iter)?.into_iter().map(|b| box_to_rc(b)).collect()
+                };
+                fun.type_check()?;
+                Ok(Box::new(FunStatement {
+                    ident: ident.clone(),
+                    fun
+                }))
+            // case 3: args + maybe return type
+            } else if let Some(AliceToken::Sep(AliceSeparator::Colon)) = iter.next() {
+                let mut args = Vec::new();
+                let mut return_type = 0u32;
+                let mut comma_ok = false;
+                while let Some(ty) = iter.next() {
+                    match ty {
+                        AliceToken::IdentOrKeyw(ty) => {
+                            args.push(type_bit_any_allowed(ty)?);
+                            comma_ok = true;
+                        }
+                        AliceToken::Sep(AliceSeparator::Comma) => {
+                            if comma_ok {
+                                comma_ok = false;
+                            } else {
+                                return Err("Unexpected double comma in function signature".into())
+                            }
+                        }
+                        AliceToken::Op(AliceOp::Sub) => {
+                            return_type = self.parse_fun_return_after_dash(iter)?;
+                            break;
+                        }
+                        AliceToken::Sep(AliceSeparator::OpenB) => break,
+                        _ => return Err("Unexpected token in function signature".into()),
+                    }
+                }
+                if args.is_empty() {
+                    return Err("expected argument type(s) after `'fun' ident ':'`".into());
+                }
+                let fun = AliceFun {
+                    args: StackPattern(args),
+                    return_type,
+                    body: self.gobble_block(iter)?.into_iter().map(|b| box_to_rc(b)).collect()
+                };
+                fun.type_check()?;
+                Ok(Box::new(FunStatement {
+                    ident: ident.clone(),
+                    fun
+                }))
+            } else {
+                Err("after `'fun' ident`, expected one of: `'->'` `':'` `'{'`".into())
+            }
+        } else {
+            Err("fun syntax: 'fun' ident '{' statement* '}'".into())
+        }
+    }
+
+    fn parse_fun_return_after_dash(&self, iter: &mut TokenIter) -> Result<u32, String> {
+        if !matches!(iter.next(), Some(AliceToken::Op(AliceOp::Gt))) {
+            return Err("unexpected token after `'fun' ident ... -`, you probably meant to put `->`".into())
+        }
+        if let (Some(AliceToken::IdentOrKeyw(ty)), Some(AliceToken::Sep(AliceSeparator::OpenB)))
+            = (iter.next(), iter.next()) {
+            Ok(type_bit(&AliceVal::for_type_name(ty)?))
+        } else {
+            Err("return type and function body expected".into())
+        }
+    }
+
+    /// parses tokens into a vec until the closing "}" is found
+    fn gobble_block(&self, iter: &mut TokenIter) -> Result<Vec<Box<dyn Statement>>, String> {
+        let mut vec: Vec<Box<dyn Statement>> = Vec::new();
+        while let Some(tok) = iter.next() {
+            if matches!(tok, AliceToken::Sep(AliceSeparator::CloseB)) {
+                return Ok(vec);
+            }
+            vec.push(self.gobble_token(tok, iter)?);
+        }
+        Err("missing delimiter: hit EOF while searching for '}'".into())
     }
 
     fn maybe_gobble_statement(&self, ident: &String) -> Option<Box<dyn Statement>> {
@@ -129,16 +236,25 @@ impl AliceParser {
         }
     }
 
-    fn gobble_ident(&self, ident: &String, iter: &mut TokenIter) -> Box<dyn Statement> {
+    fn gobble_ident(&self, ident: &String, iter: &mut TokenIter) -> Result<Box<dyn Statement>, String> {
         // todo!: at conversion
-        Box::new(PushFromTableStatement(ident.clone()))
+        if let Some(AliceToken::Sep(AliceSeparator::OpenP)) = iter.peek() {
+            iter.next();
+            if !matches!(iter.next(), Some(AliceToken::Sep(AliceSeparator::CloseP))) {
+                Err("closing parentheses in function call missing!".into())
+            } else {
+                Ok(Box::new(ExecuteFunStatement(ident.clone())))
+            }
+        } else {
+            Ok(Box::new(PushFromTableStatement(ident.clone())))
+        }
     }
 
     fn gobble_string_literal(
         &self,
         s: &String,
         iter: &mut TokenIter,
-    ) -> Result<Box<PushStatement>, String> {
+    ) -> Result<Box<dyn Statement>, String> {
         Ok(Box::new(PushStatement(
             match self.maybe_at_conversion(iter) {
                 Ok(Some(AliceVal::String(_))) => AliceVal::String(Some(s.to_string())),
@@ -154,7 +270,7 @@ impl AliceParser {
         f: f64,
         dec: bool,
         iter: &mut TokenIter,
-    ) -> Result<Box<PushStatement>, String> {
+    ) -> Result<Box<dyn Statement>, String> {
         Ok(Box::new(PushStatement(
             match self.maybe_at_conversion(iter) {
                 Ok(Some(AliceVal::Float(_))) => AliceVal::Float(Some(f)),
@@ -190,6 +306,8 @@ impl AliceParser {
             AliceOp::Div => Box::new(DivStatement),
             AliceOp::Pow => Box::new(PowStatement),
             AliceOp::Mod => Box::new(ModStatement),
+            AliceOp::Gt => todo!(),
+            AliceOp::Lt => todo!(),
             AliceOp::Eqs => return Err("unexpected equal sign".into()),
         })
     }
@@ -221,3 +339,4 @@ impl AliceParser {
         }
     }
 }
+

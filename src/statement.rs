@@ -1,4 +1,5 @@
-use crate::runtime::{AliceStack, AliceTable, AliceVal};
+use crate::runtime::*;
+use crate::object::*;
 use crate::type_check::*;
 
 pub trait Statement {
@@ -75,14 +76,24 @@ pub struct ModStatement;
 /// clears the stack
 pub struct ClearStatement;
 
-/// bind a variable
+/// binds a variable
 pub struct LetStatement {
     pub ident: String,
     pub ty: u32,
     pub literal: Option<AliceVal>,
 }
 
+/// copies a variable's value from the table onto the stack
 pub struct PushFromTableStatement(pub String);
+
+/// binds a function
+pub struct FunStatement {
+    pub ident: String,
+    pub fun: AliceFun,
+}
+
+/// executes a function from the table
+pub struct ExecuteFunStatement(pub String);
 
 impl Statement for PushStatement {
     fn out_pattern(&self) -> StackPattern {
@@ -164,8 +175,8 @@ impl Statement for SwapStatement {
     fn custom_type_check(&self, stack: &mut TypeStack) -> Result<(), TypeCheckError> {
         // need to dynamically generate type check patterns
         stack.required_size(2)?;
-        let second = stack.0.remove(stack.0.len() - 2);
-        stack.0.push(second);
+        let second = stack.vals.remove(stack.vals.len() - 2);
+        stack.vals.push(second);
         Ok(())
     }
 
@@ -179,7 +190,7 @@ impl Statement for SwapStatement {
 impl Statement for DupStatement {
     fn custom_type_check(&self, stack: &mut TypeStack) -> Result<(), TypeCheckError> {
         stack.required_size(1)?;
-        stack.0.push(*stack.0.get(stack.0.len() - 1).unwrap()); // unwrapping safe due to previous check
+        stack.vals.push(*stack.vals.get(stack.vals.len() - 1).unwrap()); // unwrapping safe due to previous check
         Ok(())
     }
 
@@ -192,7 +203,7 @@ impl Statement for DupStatement {
 impl Statement for OverStatement {
     fn custom_type_check(&self, stack: &mut TypeStack) -> Result<(), TypeCheckError> {
         stack.required_size(2)?;
-        stack.0.push(*stack.0.get(stack.0.len() - 2).unwrap()); // unwrapping safe due to previoud check
+        stack.vals.push(*stack.vals.get(stack.vals.len() - 2).unwrap()); // unwrapping safe due to previoud check
         Ok(())
     }
 
@@ -205,8 +216,8 @@ impl Statement for OverStatement {
 impl Statement for RotStatement {
     fn custom_type_check(&self, stack: &mut TypeStack) -> Result<(), TypeCheckError> {
         stack.required_size(3)?;
-        let third = stack.0.remove(stack.0.len() - 3);
-        stack.0.push(third);
+        let third = stack.vals.remove(stack.vals.len() - 3);
+        stack.vals.push(third);
         Ok(())
     }
     fn execute(&self, stack: &mut AliceStack, _table: &mut AliceTable) -> Result<(), String> {
@@ -223,7 +234,7 @@ impl Statement for AddStatement {
         stack.required_size(2)?;
         let b = stack.pop().unwrap();
         let a = stack.pop().unwrap();
-        stack.0.push(match (a, b) {
+        stack.vals.push(match (a, b) {
             (INT, INT) => INT,
             (FLOAT, FLOAT) => FLOAT,
             (INT, FLOAT) | (FLOAT, INT) => FLOAT,
@@ -271,7 +282,7 @@ impl Statement for SubStatement {
         stack.required_size(2)?;
         let b = stack.pop().unwrap();
         let a = stack.pop().unwrap();
-        stack.0.push(match (a, b) {
+        stack.vals.push(match (a, b) {
             (INT, INT) => INT,
             (FLOAT, FLOAT) => FLOAT,
             (INT, FLOAT) | (FLOAT, INT) => FLOAT,
@@ -309,7 +320,7 @@ impl Statement for MulStatement {
         stack.required_size(2)?;
         let b = stack.pop().unwrap();
         let a = stack.pop().unwrap();
-        stack.0.push(match (a, b) {
+        stack.vals.push(match (a, b) {
             (INT, INT) => INT,
             (FLOAT, FLOAT) => FLOAT,
             (INT, FLOAT) | (FLOAT, INT) => FLOAT,
@@ -347,7 +358,7 @@ impl Statement for DivStatement {
         stack.required_size(2)?;
         let b = stack.pop().unwrap();
         let a = stack.pop().unwrap();
-        stack.0.push(match (a, b) {
+        stack.vals.push(match (a, b) {
             (INT, INT) => INT,
             (FLOAT, FLOAT) => FLOAT,
             (INT, FLOAT) | (FLOAT, INT) => FLOAT,
@@ -385,7 +396,7 @@ impl Statement for PowStatement {
         stack.required_size(2)?;
         let b = stack.pop().unwrap();
         let a = stack.pop().unwrap();
-        stack.0.push(match (a, b) {
+        stack.vals.push(match (a, b) {
             (INT, INT) => INT,
             (FLOAT, FLOAT) => FLOAT,
             (FLOAT, INT) => FLOAT,
@@ -425,7 +436,7 @@ impl Statement for ModStatement {
         stack.required_size(2)?;
         let b = stack.pop().unwrap();
         let a = stack.pop().unwrap();
-        stack.0.push(match (a, b) {
+        stack.vals.push(match (a, b) {
             (INT, INT) => INT,
             (FLOAT, FLOAT) => FLOAT,
             (INT, FLOAT) | (FLOAT, INT) => FLOAT,
@@ -460,7 +471,7 @@ impl Statement for ModStatement {
 impl Statement for ClearStatement {
     fn custom_type_check(&self, stack: &mut TypeStack) -> Result<(), TypeCheckError> {
         stack.required_size(0)?;
-        stack.0.clear();
+        stack.vals.clear();
         Ok(())
     }
 
@@ -476,7 +487,7 @@ impl Statement for LetStatement {
     }
 
     fn custom_type_check(&self, stack: &mut TypeStack) -> Result<(), TypeCheckError> {
-        stack.1.insert(self.ident.clone(), self.ty);
+        stack.vars.insert(self.ident.clone(), self.ty);
         Ok(())
     }
 
@@ -493,8 +504,8 @@ impl Statement for LetStatement {
 
 impl Statement for PushFromTableStatement {
     fn custom_type_check(&self, stack: &mut TypeStack) -> Result<(), TypeCheckError> {
-        if let Some(ty) = stack.1.get(&self.0) {
-            stack.0.push(*ty);
+        if let Some(ty) = stack.vars.get(&self.0) {
+            stack.vals.push(*ty);
             Ok(())
         } else {
             Err(TypeCheckError(format!("variable binding {} doesn't exist when this executes", self.0)))
@@ -504,6 +515,51 @@ impl Statement for PushFromTableStatement {
     fn execute(&self, stack: &mut AliceStack, table: &mut AliceTable) -> Result<(), String> {
         // unwrapping safe due to type checker
         stack.push(table.get(&self.0).unwrap().clone());
+        Ok(())
+    }
+}
+
+impl Statement for ExecuteFunStatement {
+    fn custom_type_check(&self, stack: &mut TypeStack) -> Result<(), TypeCheckError> {
+        let sig = stack.funs.remove(&self.0);
+        if sig.is_some() {
+            let sig_clone = sig.as_ref().unwrap().clone();
+            stack.funs.insert(self.0.clone(), sig.unwrap());
+            let sig = sig_clone;
+            sig.0.type_check(stack)?;
+            if sig.1 != 0 {
+                stack.vals.push(sig.1);
+            }
+            Ok(())
+        } else {
+            Err(TypeCheckError(format!("function '{}' doesn't exist when this executes!", self.0)))
+        }
+    }
+
+    fn execute(&self, stack: &mut AliceStack, table: &mut AliceTable) -> Result<(), String> {
+        let fun = table.take(&self.0);
+        if fun.is_none() {
+            panic!("fix your type checker, dumbass!")
+        }
+        let fun = fun.unwrap();
+        let fun_clone = fun.clone();
+        table.put(self.0.clone(), fun);
+        if let AliceVal::Function(Some(f)) = fun_clone {
+            f.execute(stack, table)
+        } else {
+            panic!("fix your type checker, dumbass")
+        }
+    }
+}
+
+impl Statement for FunStatement {
+    fn custom_type_check(&self, stack: &mut TypeStack) -> Result<(), TypeCheckError> {
+        stack.funs.insert(self.ident.clone(), (self.fun.args.clone(), self.fun.return_type));
+        Ok(())
+    }
+
+    fn execute(&self, stack: &mut AliceStack, table: &mut AliceTable) -> Result<(), String> {
+        table.put(self.ident.clone(), AliceVal::Function(Some(self.fun.clone())));
         Ok(())
     }
 }
