@@ -244,6 +244,8 @@ impl AliceParser {
             AliceOp::Div => Box::new(DivStatement),
             AliceOp::Pow => Box::new(PowStatement),
             AliceOp::Mod => Box::new(ModStatement),
+            AliceOp::Gt => todo!(),
+            AliceOp::Lt => todo!(),
             AliceOp::Eqs => return Err("unexpected equal sign".into()),
         })
     }
