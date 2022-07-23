@@ -95,6 +95,8 @@ pub struct FunStatement {
 /// executes a function from the table
 pub struct ExecuteFunStatement(pub String);
 
+pub struct ReadInputStatement;
+
 impl Statement for PushStatement {
     fn out_pattern(&self) -> StackPattern {
         StackPattern::single(type_bit(&self.0))
@@ -560,6 +562,19 @@ impl Statement for FunStatement {
 
     fn execute(&self, stack: &mut AliceStack, table: &mut AliceTable) -> Result<(), String> {
         table.put(self.ident.clone(), AliceVal::Function(Some(self.fun.clone())));
+        Ok(())
+    }
+}
+
+impl Statement for ReadInputStatement {
+    fn out_pattern(&self) -> StackPattern {
+        StackPattern::single(ANY)
+    }
+    fn execute(&self, stack: &mut AliceStack, _table: &mut AliceTable) -> Result<(), String> {
+        use std::io;
+        let mut s = String::new();
+        io::stdin().read_line(&mut s).map_err(|e| e.to_string());
+        stack.push(AliceVal::String(Some(s)));
         Ok(())
     }
 }
