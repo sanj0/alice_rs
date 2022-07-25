@@ -102,6 +102,9 @@ pub struct IfStatement(pub IfContainer);
 /// if-else statement
 pub struct IfElseStatement(pub IfElseContainer);
 
+/// reads a single line of input from the command line
+pub struct ReadInputStatement;
+
 impl Statement for PushStatement {
     fn out_pattern(&self) -> StackPattern {
         StackPattern::single(type_bit(&self.0))
@@ -624,6 +627,19 @@ impl Statement for IfElseStatement {
         } else {
             panic!("fix your type checker!")
         }
+        Ok(())
+    }
+}
+
+impl Statement for ReadInputStatement {
+    fn out_pattern(&self) -> StackPattern {
+        StackPattern::single(ANY)
+    }
+    fn execute(&self, stack: &mut AliceStack, _table: &mut AliceTable) -> Result<(), String> {
+        use std::io;
+        let mut s = String::new();
+        io::stdin().read_line(&mut s).map_err(|e| e.to_string());
+        stack.push(AliceVal::String(Some(if s.ends_with("\n") { s[..s.len()-1].into() } else { s })));
         Ok(())
     }
 }

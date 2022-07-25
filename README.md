@@ -25,12 +25,4 @@ sandbox = "sandbox", block;
 ```
 
 ## Examples
-```
-// literal definition:
-let hi = "hello, world!"
-
-// function definition:
-fun greet: string s -> string {
-    hi + " This is I!" return
-}
-```
+See [example folder](./examples/)
