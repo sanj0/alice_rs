@@ -1,5 +1,5 @@
 use crate::keyword::{keywords, Keyword};
-use crate::lexer::{AliceOp, AliceSeparator, AliceToken};
+use crate::lexer::*;
 use crate::runtime::AliceVal;
 use crate::statement::*;
 use crate::type_check::*;

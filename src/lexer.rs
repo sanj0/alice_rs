@@ -7,7 +7,39 @@ use crate::loc::Loc;
 #[derive(Debug)]
 pub struct AliceLexer {
     src: String,
+    file: String,
+}
+
+struct CharIt<'a> {
+    iter: Peekable<Chars<'a>>,
     loc: Loc,
+}
+
+impl<'a> CharIt<'a> {
+    pub fn new(iter: Peekable<Chars<'a>>, file: String) -> Self {
+        Self {
+            iter,
+            loc: Loc::new(file, 1, 1),
+        }
+    }
+    pub fn peek(&mut self) -> Option<char> {
+        if let Some(&c) = self.iter.peek() {
+            Some(c)
+        } else {
+            None
+        }
+    }
+
+    pub fn next(&mut self) -> Option<char> {
+        let c = self.iter.next();
+        if let Some('\n') = c {
+            self.loc.line += 1;
+            self.loc.column = 1;
+        } else if c.is_some() {
+            self.loc.column += 1;
+        }
+        c
+    }
 }
 
 // when adding a new item, must modify all places comment-marked:
@@ -67,28 +99,20 @@ impl AliceLexer {
     pub fn new(src: String, file: String) -> Self {
         Self {
             src,
-            loc: Loc::new(file, 1, 1),
+            file,
         }
     }
 
     pub fn tokenize(&mut self) -> Result<Vec<AliceToken>, AliceLexerErr> {
-        let mut tokens = Vec::<AliceToken>::new();
-        let mut char_iter = self.src.chars().peekable();
+        let mut tokens = Vec::new();
+        let mut char_iter = CharIt::new(self.src.chars().peekable(), self.file.clone());
         while let Some(c) = char_iter.next() {
             if c.is_whitespace() {
-                if c == '\n' {
-                    self.loc.line += 1;
-                    self.loc.column = 1;
-                } else {
-                    self.loc.column += 1;
-                }
                 continue;
             }
             if c == '#' {
                 while let Some(c) = char_iter.next() {
                     if c == '\n' {
-                        self.loc.line += 1;
-                        self.loc.column = 1;
                         break;
                     }
                 }
@@ -103,7 +127,7 @@ impl AliceLexer {
     fn gobble_token(
         &self,
         start: char,
-        iter: &mut Peekable<Chars>,
+        iter: &mut CharIt,
     ) -> Result<AliceToken, AliceLexerErr> {
         match start {
             '"' | '\'' => self.gobble_string(start, iter),
@@ -117,12 +141,11 @@ impl AliceLexer {
     fn gobble_string(
         &self,
         end: char,
-        iter: &mut Peekable<Chars>,
+        iter: &mut CharIt,
     ) -> Result<AliceToken, AliceLexerErr> {
         let mut s = String::new();
         let mut escaped = false;
         while let Some(c) = iter.peek() {
-            let c = *c;
             if escaped {
                 match c {
                     '\\' | '"' | '\'' => s.push(c),
@@ -132,7 +155,7 @@ impl AliceLexer {
                     _ => {
                         return Err(AliceLexerErr::IllegalEscapeSequence(
                             format!("unknown escape sequence \\{c}"),
-                            self.loc.clone(),
+                            iter.loc.clone(),
                         ))
                     }
                 }
@@ -149,14 +172,14 @@ impl AliceLexer {
         }
         Err(AliceLexerErr::MissingDelimeter(
             format!("missing string delimiter '{end}'"),
-            self.loc.clone(),
+            iter.loc.clone(),
         ))
     }
 
     fn gobble_number(
         &self,
         start: char,
-        iter: &mut Peekable<Chars>,
+        iter: &mut CharIt,
     ) -> Result<AliceToken, AliceLexerErr> {
         let mut had_period = start == '.';
         let mut s = String::new();
@@ -180,7 +203,7 @@ impl AliceLexer {
                 Some(b) => {
                     return Err(AliceLexerErr::NumberFormatErr(
                         format!("illegal base hint {b}"),
-                        self.loc.clone(),
+                        iter.loc.clone(),
                     ))
                 }
                 None => return Ok(AliceToken::Number(0.0, false)),
@@ -189,14 +212,14 @@ impl AliceLexer {
             10
         };
         while let Some(c) = iter.peek() {
-            match *c {
+            match c {
                 d if d.is_digit(base) => s.push(d),
                 '_' => (),
                 '.' => {
                     if had_period {
                         return Err(AliceLexerErr::NumberFormatErr(
                             "multiple period in number literal!".into(),
-                            self.loc.clone(),
+                            iter.loc.clone(),
                         ));
                     } else {
                         s.push('.');
@@ -205,33 +228,33 @@ impl AliceLexer {
                 }
                 c if is_token_separator(&c) || c.is_whitespace() => {
                     return Ok(AliceToken::Number(
-                        self.parse_number(s, base as u32)?,
+                        self.parse_number(s, base as u32, &iter.loc)?,
                         had_period,
                     ));
                 }
                 _ => {
                     return Err(AliceLexerErr::NumberFormatErr(
                         format!("unexpected symbol in number literal :'{c}'"),
-                        self.loc.clone(),
+                        iter.loc.clone(),
                     ))
                 }
             }
             iter.next();
         }
         Ok(AliceToken::Number(
-            self.parse_number(s, base as u32)?,
+            self.parse_number(s, base as u32, &iter.loc)?,
             had_period,
         ))
     }
 
-    fn parse_number(&self, s: String, base: u32) -> Result<f64, AliceLexerErr> {
+    fn parse_number(&self, s: String, base: u32, loc: &Loc) -> Result<f64, AliceLexerErr> {
         if base == 10 {
             s.parse()
-                .map_err(|e: ParseFloatError| to_number_format_error(e, self.loc.clone()))
+                .map_err(|e: ParseFloatError| to_number_format_error(e, loc.clone()))
         } else {
             i64::from_str_radix(&s, base)
                 .map(|n| n as f64)
-                .map_err(|e: ParseIntError| to_number_format_error(e, self.loc.clone()))
+                .map_err(|e: ParseIntError| to_number_format_error(e, loc.clone()))
         }
     }
 
@@ -239,10 +262,10 @@ impl AliceLexer {
     fn gobble_operator(
         &self,
         start: char,
-        iter: &mut Peekable<Chars>,
+        iter: &mut CharIt,
     ) -> Result<AliceToken, AliceLexerErr> {
         if let Some(next) = iter.peek() {
-            if start == '*' && *next == '*' {
+            if start == '*' && next == '*' {
                 iter.next();
                 return Ok(AliceToken::Op(AliceOp::Pow));
             }
@@ -254,7 +277,7 @@ impl AliceLexer {
     fn gobble_separator(
         &self,
         sep: char,
-        _iter: &mut Peekable<Chars>,
+        iter: &mut CharIt,
     ) -> Result<AliceToken, AliceLexerErr> {
         match sep {
             '(' => Ok(AliceToken::Sep(AliceSeparator::OpenP)),
@@ -270,7 +293,7 @@ impl AliceLexer {
             '@' => Ok(AliceToken::Sep(AliceSeparator::At)),
             _ => Err(AliceLexerErr::UnexpectedSymbol(
                 format!("unexpected separator '{sep}'"),
-                self.loc.clone(),
+                iter.loc.clone(),
             )),
         }
     }
@@ -278,14 +301,14 @@ impl AliceLexer {
     fn gobble_ident_or_keyw(
         &self,
         start: char,
-        iter: &mut Peekable<Chars>,
+        iter: &mut CharIt,
     ) -> Result<AliceToken, AliceLexerErr> {
         let mut s: String = start.into();
         while let Some(c) = iter.peek() {
-            if is_token_separator(c) || c.is_whitespace() {
+            if is_token_separator(&c) || c.is_whitespace() {
                 break;
             } else {
-                s.push(*c);
+                s.push(c);
                 iter.next();
             }
         }
