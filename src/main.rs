@@ -8,6 +8,7 @@ mod statement;
 mod type_check;
 mod object;
 mod utils;
+mod flow;
 
 use crate::lexer::AliceLexer;
 use crate::parser::AliceParser;

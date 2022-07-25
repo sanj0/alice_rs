@@ -1,6 +1,7 @@
 use crate::runtime::*;
 use crate::object::*;
 use crate::type_check::*;
+use crate::flow::*;
 
 pub trait Statement {
     fn in_pattern(&self) -> StackPattern {
@@ -94,6 +95,12 @@ pub struct FunStatement {
 
 /// executes a function from the table
 pub struct ExecuteFunStatement(pub String);
+
+/// if statement
+pub struct IfStatement(pub IfContainer);
+
+/// if-else statement
+pub struct IfElseStatement(pub IfElseContainer);
 
 impl Statement for PushStatement {
     fn out_pattern(&self) -> StackPattern {
@@ -560,6 +567,63 @@ impl Statement for FunStatement {
 
     fn execute(&self, stack: &mut AliceStack, table: &mut AliceTable) -> Result<(), String> {
         table.put(self.ident.clone(), AliceVal::Function(Some(self.fun.clone())));
+        Ok(())
+    }
+}
+
+impl Statement for IfStatement {
+    fn in_pattern(&self) -> StackPattern {
+        StackPattern::single(BOOL)
+    }
+
+    fn custom_type_check(&self, stack: &mut TypeStack) -> Result<(), TypeCheckError> {
+        let stack_size_0 = stack.vals.len();
+        check_rc(stack, &self.0.body)?;
+        if stack.vals.len() != stack_size_0 {
+            Err(TypeCheckError("if without else part is not allowed to modify stack".into()))
+        } else {
+            Ok(())
+        }
+    }
+
+    fn execute(&self, stack: &mut AliceStack, table: &mut AliceTable) -> Result<(), String> {
+        if let Ok(AliceVal::Bool(Some(b))) = stack.pop() {
+            if b {
+                for s in &self.0.body {
+                    s.execute(stack, table)?;
+                }
+            }
+        } else {
+            panic!("fix your type checker!")
+        }
+        Ok(())
+    }
+}
+
+impl Statement for IfElseStatement {
+    fn in_pattern(&self) -> StackPattern {
+        StackPattern::single(BOOL)
+    }
+
+    fn custom_type_check(&self, stack: &mut TypeStack) -> Result<(), TypeCheckError> {
+        let mut stack_clone = stack.clone();
+        check_rc(stack, &self.0.if_body)?;
+        check_rc(&mut stack_clone, &self.0.else_body)?;
+        if stack_clone == stack {
+            Ok(())
+        } else {
+            Err(TypeCheckError("if and else body don't have equal affect on stack".into()))
+        }
+    }
+
+    fn execute(&self, stack: &mut AliceStack, table: &mut AliceTable) -> Result<(), String> {
+        if let Ok(AliceVal::Bool(Some(b))) = stack.pop() {
+            for s in if b { &self.0.if_body } else { &self.0.else_body } {
+                s.execute(stack, table)?;
+            }
+        } else {
+            panic!("fix your type checker!")
+        }
         Ok(())
     }
 }

@@ -5,6 +5,7 @@ use crate::statement::*;
 use crate::type_check::*;
 use crate::object::*;
 use crate::utils::*;
+use crate::flow::*;
 
 use std::collections::HashMap;
 use std::iter::Peekable;
@@ -92,8 +93,26 @@ impl AliceParser {
             Keyword::False => PushStatement(AliceVal::Bool(Some(false))),
             Keyword::Let => return self.gobble_let(iter),
             Keyword::Fun => return self.gobble_fun(iter),
+            Keyword::If => return self.gobble_if(iter),
             _ => todo!(),
         }))
+    }
+
+    fn gobble_if(&self, iter: &mut TokenIter) -> Result<Box<dyn Statement>, String> {
+        if !matches!(iter.next(), Some(AliceToken::Sep(AliceSeparator::OpenB))) {
+            return Err("if statements requires body block { ... }".into());
+        }
+        let body = self.gobble_block(iter)?.into_iter().map(|b| box_to_rc(b)).collect();
+        if matches!(iter.peek(), Some(AliceToken::IdentOrKeyw(iok)) if iok == crate::keyword::KW_ELSE) {
+            iter.next();
+            if !matches!(iter.next(), Some(AliceToken::Sep(AliceSeparator::OpenB))) {
+                return Err("else statements requires body block { ... }".into());
+            }
+            let else_body = self.gobble_block(iter)?.into_iter().map(|b| box_to_rc(b)).collect();
+            Ok(Box::new(IfElseStatement(IfElseContainer {if_body: body, else_body})))
+        } else {
+            Ok(Box::new(IfStatement(IfContainer { body })))
+        }
     }
 
     /// syntax:

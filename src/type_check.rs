@@ -58,7 +58,7 @@ pub fn check_interactive(
     Ok(())
 }
 
-pub fn check_fun(
+pub fn check_rc(
     stack: &mut TypeStack,
     statements: &Vec<Rc<dyn Statement>>,
 ) -> Result<(), TypeCheckError> {
@@ -127,6 +127,12 @@ impl TypeStack {
         } else {
             Ok(())
         }
+    }
+}
+
+impl PartialEq<&Self> for TypeStack {
+    fn eq(&self, other: &&Self) -> bool {
+        self.vals == other.vals
     }
 }
 

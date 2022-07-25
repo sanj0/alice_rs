@@ -43,7 +43,7 @@ impl AliceFun {
     pub fn type_check(&self) -> Result<(), TypeCheckError> {
         let mut stack = TypeStack::new();
         self.args.push(&mut stack);
-        check_fun(&mut stack, &self.body).map_err(|e| e.prefix("Function signature doesn't allow for this: ".into()))?;
+        check_rc(&mut stack, &self.body).map_err(|e| e.prefix("Function signature doesn't allow for this: ".into()))?;
         if self.return_type == 0 && stack.vals.len() == 0 {
             return Ok(())
         }
