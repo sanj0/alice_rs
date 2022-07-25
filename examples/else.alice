@@ -1,0 +1,15 @@
+# in order to conditionally alter the stack but not uncertain-ify the type checker,
+# both if and else bodys have to have the same implicit type signature
+
+true if {
+    "it works"
+} else {
+    "it doesn't" " work" +
+}
+
+false let b:bool
+b if {
+    drop
+} else {
+    println
+}

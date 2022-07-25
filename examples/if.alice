@@ -1,0 +1,10 @@
+# simple if / else
+true if {           # if pops a boolean value from the stack and behaves as expected
+    "yes" println   # if _can_ leave exactly one value on the stack
+}
+
+false let b:bool
+b if {
+    "oh god please not" println
+}
+
