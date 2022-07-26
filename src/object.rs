@@ -1,10 +1,10 @@
-use std::collections::HashMap;
-use crate::statement::Statement;
 use crate::runtime::*;
+use crate::statement::Statement;
 use crate::type_check::*;
+use std::collections::HashMap;
 
-use std::rc::Rc;
 use std::fmt;
+use std::rc::Rc;
 
 #[derive(Debug, Clone)]
 pub struct AliceObj {
@@ -36,21 +36,26 @@ impl AliceFun {
         Self {
             args,
             return_type,
-            body
+            body,
         }
     }
 
     pub fn type_check(&self) -> Result<(), TypeCheckError> {
         let mut stack = TypeStack::new();
         self.args.push(&mut stack);
-        check_rc(&mut stack, &self.body).map_err(|e| e.prefix("Function signature doesn't allow for this: ".into()))?;
+        check_rc(&mut stack, &self.body)
+            .map_err(|e| e.prefix("Function signature doesn't allow for this: ".into()))?;
         if self.return_type == 0 && stack.vals.len() == 0 {
-            return Ok(())
+            return Ok(());
         }
         if stack.vals.len() == 0 {
-            Err(TypeCheckError("function should return something but doesn't".into()))
+            Err(TypeCheckError(
+                "function should return something but doesn't".into(),
+            ))
         } else if stack.vals.len() > 1 {
-            Err(TypeCheckError("function returns more than one value".into()))
+            Err(TypeCheckError(
+                "function returns more than one value".into(),
+            ))
         } else if stack.pop().unwrap() != self.return_type {
             Err(TypeCheckError("function has wrong return type!".into()))
         } else {

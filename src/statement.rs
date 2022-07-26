@@ -1,7 +1,7 @@
-use crate::runtime::*;
-use crate::object::*;
-use crate::type_check::*;
 use crate::flow::*;
+use crate::object::*;
+use crate::runtime::*;
+use crate::type_check::*;
 
 pub trait Statement {
     fn in_pattern(&self) -> StackPattern {
@@ -200,7 +200,9 @@ impl Statement for SwapStatement {
 impl Statement for DupStatement {
     fn custom_type_check(&self, stack: &mut TypeStack) -> Result<(), TypeCheckError> {
         stack.required_size(1)?;
-        stack.vals.push(*stack.vals.get(stack.vals.len() - 1).unwrap()); // unwrapping safe due to previous check
+        stack
+            .vals
+            .push(*stack.vals.get(stack.vals.len() - 1).unwrap()); // unwrapping safe due to previous check
         Ok(())
     }
 
@@ -213,7 +215,9 @@ impl Statement for DupStatement {
 impl Statement for OverStatement {
     fn custom_type_check(&self, stack: &mut TypeStack) -> Result<(), TypeCheckError> {
         stack.required_size(2)?;
-        stack.vals.push(*stack.vals.get(stack.vals.len() - 2).unwrap()); // unwrapping safe due to previoud check
+        stack
+            .vals
+            .push(*stack.vals.get(stack.vals.len() - 2).unwrap()); // unwrapping safe due to previoud check
         Ok(())
     }
 
@@ -502,12 +506,14 @@ impl Statement for LetStatement {
     }
 
     fn execute(&self, stack: &mut AliceStack, table: &mut AliceTable) -> Result<(), String> {
-        table.put(self.ident.clone(),
+        table.put(
+            self.ident.clone(),
             if self.literal.is_some() {
                 self.literal.as_ref().unwrap().clone()
             } else {
                 stack.pop().unwrap()
-        });
+            },
+        );
         Ok(())
     }
 }
@@ -518,7 +524,10 @@ impl Statement for PushFromTableStatement {
             stack.vals.push(*ty);
             Ok(())
         } else {
-            Err(TypeCheckError(format!("variable binding {} doesn't exist when this executes", self.0)))
+            Err(TypeCheckError(format!(
+                "variable binding {} doesn't exist when this executes",
+                self.0
+            )))
         }
     }
 
@@ -542,7 +551,10 @@ impl Statement for ExecuteFunStatement {
             }
             Ok(())
         } else {
-            Err(TypeCheckError(format!("function '{}' doesn't exist when this executes!", self.0)))
+            Err(TypeCheckError(format!(
+                "function '{}' doesn't exist when this executes!",
+                self.0
+            )))
         }
     }
 
@@ -564,12 +576,18 @@ impl Statement for ExecuteFunStatement {
 
 impl Statement for FunStatement {
     fn custom_type_check(&self, stack: &mut TypeStack) -> Result<(), TypeCheckError> {
-        stack.funs.insert(self.ident.clone(), (self.fun.args.clone(), self.fun.return_type));
+        stack.funs.insert(
+            self.ident.clone(),
+            (self.fun.args.clone(), self.fun.return_type),
+        );
         Ok(())
     }
 
     fn execute(&self, stack: &mut AliceStack, table: &mut AliceTable) -> Result<(), String> {
-        table.put(self.ident.clone(), AliceVal::Function(Some(self.fun.clone())));
+        table.put(
+            self.ident.clone(),
+            AliceVal::Function(Some(self.fun.clone())),
+        );
         Ok(())
     }
 }
@@ -583,7 +601,9 @@ impl Statement for IfStatement {
         let stack_size_0 = stack.vals.len();
         check_rc(stack, &self.0.body)?;
         if stack.vals.len() != stack_size_0 {
-            Err(TypeCheckError("if without else part is not allowed to modify stack".into()))
+            Err(TypeCheckError(
+                "if without else part is not allowed to modify stack".into(),
+            ))
         } else {
             Ok(())
         }
@@ -615,13 +635,19 @@ impl Statement for IfElseStatement {
         if stack_clone == stack {
             Ok(())
         } else {
-            Err(TypeCheckError("if and else body don't have equal affect on stack".into()))
+            Err(TypeCheckError(
+                "if and else body don't have equal affect on stack".into(),
+            ))
         }
     }
 
     fn execute(&self, stack: &mut AliceStack, table: &mut AliceTable) -> Result<(), String> {
         if let Ok(AliceVal::Bool(Some(b))) = stack.pop() {
-            for s in if b { &self.0.if_body } else { &self.0.else_body } {
+            for s in if b {
+                &self.0.if_body
+            } else {
+                &self.0.else_body
+            } {
                 s.execute(stack, table)?;
             }
         } else {
@@ -639,7 +665,11 @@ impl Statement for ReadInputStatement {
         use std::io;
         let mut s = String::new();
         io::stdin().read_line(&mut s).map_err(|e| e.to_string());
-        stack.push(AliceVal::String(Some(if s.ends_with("\n") { s[..s.len()-1].into() } else { s })));
+        stack.push(AliceVal::String(Some(if s.ends_with("\n") {
+            s[..s.len() - 1].into()
+        } else {
+            s
+        })));
         Ok(())
     }
 }

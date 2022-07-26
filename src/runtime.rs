@@ -1,5 +1,5 @@
-use std::collections::HashMap;
 use crate::object::*;
+use std::collections::HashMap;
 
 pub const TYPE_STRING: &str = "string";
 pub const TYPE_BOOL: &str = "bool";

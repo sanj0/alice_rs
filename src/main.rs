@@ -1,20 +1,20 @@
 #![allow(dead_code)]
+mod flow;
 mod keyword;
 mod lexer;
 mod loc;
+mod object;
 mod parser;
 mod runtime;
 mod statement;
 mod type_check;
-mod object;
 mod utils;
-mod flow;
 
 use crate::lexer::AliceLexer;
 use crate::parser::AliceParser;
 use clap::Parser;
-use std::time::{ Instant, Duration };
 use std::collections::HashMap;
+use std::time::{Duration, Instant};
 
 fn main() -> Result<(), String> {
     let args = AliceArgs::parse();
@@ -30,7 +30,10 @@ fn main() -> Result<(), String> {
     if bench {
         let elapsed = t0.elapsed();
         total += elapsed;
-        println!("[bench] reading, tokenizing:\t{}", display_duration(&elapsed));
+        println!(
+            "[bench] reading, tokenizing:\t{}",
+            display_duration(&elapsed)
+        );
     }
     if let Ok(tokens) = tokens {
         let mut stack = crate::runtime::AliceStack::new(64);
@@ -40,7 +43,10 @@ fn main() -> Result<(), String> {
         if bench {
             let elapsed = t0.elapsed();
             total += elapsed;
-            println!("[bench] parsing, type checking:\t{}", display_duration(&elapsed));
+            println!(
+                "[bench] parsing, type checking:\t{}",
+                display_duration(&elapsed)
+            );
         }
         if let Err(msg) = statements {
             return Err(format!("Error parsing {file}: {msg}"));

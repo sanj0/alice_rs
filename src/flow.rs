@@ -1,5 +1,5 @@
-use std::rc::Rc;
 use crate::statement::Statement;
+use std::rc::Rc;
 
 // flow control.
 // 1. if

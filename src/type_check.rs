@@ -8,7 +8,7 @@ pub const STRING: u32 = 1;
 pub const BOOL: u32 = 2;
 pub const INT: u32 = 4;
 pub const FLOAT: u32 = 8;
-// an object ist represented by 
+// an object ist represented by
 pub const OBJECT: u32 = 16;
 pub const OBJECT_SIG_MASK: u32 = 0b11111111111111111111111111100000;
 pub const ANY: u32 = 0b11111;
