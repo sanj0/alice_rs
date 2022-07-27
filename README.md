@@ -2,27 +2,17 @@
 ## Introduction
 Alice is an interpreted statically typed, concatenating, stack based language with a variable table.
 
-## Specification
-```ebnf
-(* note that whitespaces have been left out of this definition *)
-(* for the sake of simplicity. All statements have to be separated *)
-(* with either a whitespace of a separator like '(', ',', '"' ... *)
-(* or any operator. The latter two groups of tokens don't have to be separated *)
-(* except to distinguish between two multiplications "* *" and pow operation "**" *)
+## Examples
+For complete example scripts, see [example folder](./examples/).
 
-(* an alice program *)
-program = { statement | block };
-block = "{", program, "}";
-statement = phrase | literal | ident | keyword | op |,
-op = "+" | "-" | "*" | "/" | "%";
-eq = "=";
-type = ident (* identical rules *)
-phrase = let | fun | sandbox;
-let = "let", ident, [(* literal definition *) eq, literal]
-fun = "fun", ident, [":"], [type, ident], {",", type, ident}, ["->", type], block;
- (* executes on a copy of the stack. Original stack is restored after *)
-sandbox = "sandbox", block;
+```forth
+"hello, world!" println
 ```
 
-## Examples
-See [example folder](./examples/)
+```forth
+fun generate_greeting: string -> string {
+    "hello, " let prefix: string
+    prefix swap +
+}
+generate_greeting()
+```
