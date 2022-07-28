@@ -9,7 +9,6 @@ use crate::utils::*;
 
 use std::collections::HashMap;
 use std::iter::Peekable;
-use std::rc::Rc;
 use std::slice::Iter;
 
 pub const ST_PRINTLN: &str = "println";
@@ -352,7 +351,7 @@ impl AliceParser {
     fn gobble_operator(
         &self,
         op: &AliceOp,
-        iter: &mut TokenIter,
+        _iter: &mut TokenIter,
     ) -> Result<Box<dyn Statement>, String> {
         Ok(match op {
             AliceOp::Add => Box::new(AddStatement),

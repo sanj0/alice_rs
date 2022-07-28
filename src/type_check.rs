@@ -77,7 +77,7 @@ impl StackPattern {
 
     pub fn any(n: usize) -> Self {
         let mut vec = Vec::with_capacity(n);
-        for i in 0..n {
+        for _i in 0..n {
             vec.push(ANY)
         }
         Self(vec)

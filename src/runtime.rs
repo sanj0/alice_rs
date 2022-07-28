@@ -225,8 +225,8 @@ impl std::fmt::Display for AliceVal {
             Self::Bool(val) => write!(f, "{}", val.as_ref().expect("cannot print null binding")),
             Self::Int(val) => write!(f, "{}", val.as_ref().expect("cannot print null binding")),
             Self::Float(val) => write!(f, "{}", val.as_ref().expect("cannot print null binding")),
-            Self::Object(o) => todo!(),
-            Self::Function(o) => write!(f, "function"),
+            Self::Object(_o) => todo!(),
+            Self::Function(_fun) => write!(f, "function"),
         }
     }
 }

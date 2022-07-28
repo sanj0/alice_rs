@@ -75,7 +75,7 @@ impl Statement for AliceFun {
 }
 
 impl PartialEq for AliceFun {
-    fn eq(&self, other: &Self) -> bool {
+    fn eq(&self, _other: &Self) -> bool {
         // functions cannot be placed on the stack, i. e. this is never needed
         panic!("this should never happen... wtf?")
     }

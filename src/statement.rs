@@ -8,7 +8,7 @@ pub trait Statement {
         StackPattern(Vec::new())
     }
     /// for stack operator type check
-    fn custom_type_check(&self, stack: &mut TypeStack) -> Result<(), TypeCheckError> {
+    fn custom_type_check(&self, _stack: &mut TypeStack) -> Result<(), TypeCheckError> {
         Ok(())
     }
     fn out_pattern(&self) -> StackPattern {
@@ -164,7 +164,7 @@ impl Statement for ExitStatement {
 }
 
 impl Statement for OkExitStatement {
-    fn execute(&self, stack: &mut AliceStack, _table: &mut AliceTable) -> Result<(), String> {
+    fn execute(&self, _stack: &mut AliceStack, _table: &mut AliceTable) -> Result<(), String> {
         std::process::exit(0);
     }
 }
@@ -175,7 +175,7 @@ impl Statement for DropStatement {
     }
 
     fn execute(&self, stack: &mut AliceStack, _table: &mut AliceTable) -> Result<(), String> {
-        stack.pop();
+        let _ = stack.pop();
         // type checker promises that stack operations can never fail
         Ok(())
     }
@@ -583,7 +583,7 @@ impl Statement for FunStatement {
         Ok(())
     }
 
-    fn execute(&self, stack: &mut AliceStack, table: &mut AliceTable) -> Result<(), String> {
+    fn execute(&self, _stack: &mut AliceStack, table: &mut AliceTable) -> Result<(), String> {
         table.put(
             self.ident.clone(),
             AliceVal::Function(Some(self.fun.clone())),
@@ -664,7 +664,7 @@ impl Statement for ReadInputStatement {
     fn execute(&self, stack: &mut AliceStack, _table: &mut AliceTable) -> Result<(), String> {
         use std::io;
         let mut s = String::new();
-        io::stdin().read_line(&mut s).map_err(|e| e.to_string());
+        io::stdin().read_line(&mut s).map_err(|e| e.to_string())?;
         stack.push(AliceVal::String(Some(if s.ends_with("\n") {
             s[..s.len() - 1].into()
         } else {

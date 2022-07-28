@@ -13,7 +13,6 @@ mod utils;
 use crate::lexer::AliceLexer;
 use crate::parser::AliceParser;
 use clap::Parser;
-use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
 fn main() -> Result<(), String> {
