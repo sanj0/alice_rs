@@ -52,6 +52,7 @@ pub enum AliceOp {
     Eqs,
     Gt, // >
     Lt, // <
+    Bang, // !
 }
 
 #[derive(Debug)]
@@ -315,7 +316,7 @@ impl CharCollection for AliceSeparator {
 impl CharCollection for AliceOp {
     // on_add_op
     fn all_chars() -> &'static [char] {
-        &['+', '-', '*', '/', '%', '=', '>', '<']
+        &['+', '-', '*', '/', '%', '=', '>', '<', '!']
     }
 }
 
@@ -331,6 +332,7 @@ impl From<char> for AliceOp {
             '=' => AliceOp::Eqs,
             '>' => AliceOp::Gt,
             '<' => AliceOp::Lt,
+            '!' => AliceOp::Bang,
             _ => panic!("cannot convert {c} into an AliceOp"),
         }
     }
