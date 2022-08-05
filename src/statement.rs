@@ -105,6 +105,9 @@ pub struct IfElseStatement(pub IfElseContainer);
 /// reads a single line of input from the command line
 pub struct ReadInputStatement;
 
+/// compares the two topmost values for equality
+pub struct EqsStatement;
+
 impl Statement for PushStatement {
     fn out_pattern(&self) -> StackPattern {
         StackPattern::single(type_bit(&self.0))
@@ -659,7 +662,7 @@ impl Statement for IfElseStatement {
 
 impl Statement for ReadInputStatement {
     fn out_pattern(&self) -> StackPattern {
-        StackPattern::single(ANY)
+        StackPattern::single(STRING)
     }
     fn execute(&self, stack: &mut AliceStack, _table: &mut AliceTable) -> Result<(), String> {
         use std::io;
@@ -670,6 +673,27 @@ impl Statement for ReadInputStatement {
         } else {
             s
         })));
+        Ok(())
+    }
+}
+
+impl Statement for EqsStatement {
+    fn custom_type_check(&self, stack: &mut TypeStack) -> Result<(), TypeCheckError> {
+        stack.required_size(2)?;
+        let a = stack.pop().unwrap();
+        let b = stack.pop().unwrap();
+        if a != b {
+            Err(TypeCheckError("cannot == compare values of different types".into()))
+        } else {
+            stack.vals.push(BOOL);
+            Ok(())
+        }
+    }
+
+    fn execute(&self, stack: &mut AliceStack, _table: &mut AliceTable) -> Result<(), String> {
+        let a = stack.pop();
+        let b = stack.pop();
+        stack.push(AliceVal::Bool(Some(a == b)));
         Ok(())
     }
 }

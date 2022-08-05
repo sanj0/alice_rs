@@ -50,8 +50,8 @@ pub enum AliceOp {
     Pow, // **
     Mod,
     Eqs,
-    Gt, // >
-    Lt, // <
+    Gt,   // >
+    Lt,   // <
     Bang, // !
 }
 

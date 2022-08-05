@@ -22,7 +22,7 @@ pub const ST_DUP: &str = "dup";
 pub const ST_OVER: &str = "over";
 pub const ST_ROT: &str = "rot";
 pub const ST_CLEAR: &str = "clear";
-pub const ST_READ_LINE: &str = "read_line";
+pub const ST_READ_LINE: &str = "readln";
 
 type TokenIter<'a> = Peekable<Iter<'a, AliceToken>>;
 
@@ -351,7 +351,7 @@ impl AliceParser {
     fn gobble_operator(
         &self,
         op: &AliceOp,
-        _iter: &mut TokenIter,
+        iter: &mut TokenIter,
     ) -> Result<Box<dyn Statement>, String> {
         Ok(match op {
             AliceOp::Add => Box::new(AddStatement),
@@ -363,7 +363,14 @@ impl AliceParser {
             AliceOp::Gt => todo!(),
             AliceOp::Lt => todo!(),
             AliceOp::Bang => todo!(),
-            AliceOp::Eqs => todo!(),
+            AliceOp::Eqs => {
+                if let Some(AliceToken::Op(AliceOp::Eqs)) = iter.peek() {
+                    iter.next();
+                    Box::new(EqsStatement)
+                } else {
+                    todo!()
+                }
+            }
         })
     }
 
