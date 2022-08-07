@@ -107,6 +107,24 @@ pub struct ReadInputStatement;
 
 /// compares the two topmost values for equality
 pub struct EqsStatement;
+///
+/// compares the two topmost values for equality
+pub struct NotEqsStatement;
+
+/// compares the two topmost (number) values in a > fashion
+pub struct GtStatement;
+
+/// compares the two topmost (number) values in a >= fashion
+pub struct GtEqsStatement;
+///
+/// compares the two topmost (number) values in a > fashion
+pub struct LtStatement;
+
+/// compares the two topmost (number) values in a <= fashion
+pub struct LtEqsStatement;
+
+/// negates the topmost bool
+pub struct NotStatement;
 
 impl Statement for PushStatement {
     fn out_pattern(&self) -> StackPattern {
@@ -697,3 +715,43 @@ impl Statement for EqsStatement {
         Ok(())
     }
 }
+
+// generate <, <=, >, >=
+macro_rules! cmp_statement {
+    ($name:ident, $op:tt) => {
+        impl Statement for $name {
+            fn custom_type_check(&self, stack: &mut TypeStack) -> Result<(), TypeCheckError> {
+                stack.required_size(2)?;
+                // unwrapping safe due to above check
+                let a = stack.pop().unwrap();
+                let b = stack.pop().unwrap();
+                if !(a == FLOAT || a == INT && a == b) {
+                    Err(TypeCheckError("can only arithmetically compare int to int and float to float!".into()))
+                } else {
+                    stack.vals.push(BOOL);
+                    Ok(())
+                }
+            }
+
+            fn execute(&self, stack: &mut AliceStack, _table: &mut AliceTable) -> Result<(), String> {
+                // unwrapping safe due to type checker
+                let b = stack.pop().unwrap();
+                let a = stack.pop().unwrap();
+                stack.push(AliceVal::Bool(Some(
+                    match (a, b) {
+                        (AliceVal::Float(f1), AliceVal::Float(f2)) => f1 $op f2,
+                        (AliceVal::Int(n1), AliceVal::Int(n2)) => n1 $op n2,
+                        _ => panic!("fix your type checker, dumbass"),
+                    }
+                )));
+                Ok(())
+            }
+        }
+    }
+}
+
+cmp_statement![GtStatement, >];
+cmp_statement![GtEqsStatement, >=];
+cmp_statement![LtStatement, <];
+cmp_statement![LtEqsStatement, <=];
+

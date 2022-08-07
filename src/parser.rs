@@ -353,6 +353,14 @@ impl AliceParser {
         op: &AliceOp,
         iter: &mut TokenIter,
     ) -> Result<Box<dyn Statement>, String> {
+        let mut follows_eqs_op = || {
+            if let Some(AliceToken::Op(AliceOp::Eqs)) = iter.peek() {
+                iter.next();
+                true
+            } else {
+                false
+            }
+        };
         Ok(match op {
             AliceOp::Add => Box::new(AddStatement),
             AliceOp::Sub => Box::new(SubStatement),
@@ -360,12 +368,23 @@ impl AliceParser {
             AliceOp::Div => Box::new(DivStatement),
             AliceOp::Pow => Box::new(PowStatement),
             AliceOp::Mod => Box::new(ModStatement),
-            AliceOp::Gt => todo!(),
-            AliceOp::Lt => todo!(),
+            AliceOp::Gt => {
+                if follows_eqs_op() {
+                    Box::new(GtEqsStatement)
+                } else {
+                    Box::new(GtStatement)
+                }
+            },
+            AliceOp::Lt => {
+                if follows_eqs_op() {
+                    Box::new(LtEqsStatement)
+                } else {
+                    Box::new(LtStatement)
+                }
+            },
             AliceOp::Bang => todo!(),
             AliceOp::Eqs => {
-                if let Some(AliceToken::Op(AliceOp::Eqs)) = iter.peek() {
-                    iter.next();
+                if follows_eqs_op() {
                     Box::new(EqsStatement)
                 } else {
                     todo!()
